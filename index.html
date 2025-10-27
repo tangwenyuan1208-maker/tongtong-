@@ -30,7 +30,7 @@
 <div class="container">
   <div class="card">
     <h1>Find Column A / E / F by Column D</h1>
-    <div class="muted">Loads a shared Excel from Dropbox (first 5 sheets). No data uploaded elsewhere.</div>
+    <div class="muted">Loads a shared Excel from Dropbox (searches first 5 sheets). No server needed.</div>
     <div id="now" class="muted" style="margin-top:6px;"></div>
   </div>
 
@@ -49,7 +49,7 @@
       </label>
       <button id="searchBtn" disabled>Search</button>
     </div>
-    <div class="muted">We search Column D for an exact match; results show Column A, E, and F (USD).</div>
+    <div class="muted">Exact match on Column D; results show Column A, E, and F (USD).</div>
   </div>
 
   <div class="card">
@@ -66,7 +66,7 @@
 
 <script>
 (function(){
-  // 🔗 IMPORTANT: use ?raw=1 for a direct file download
+  // Your Dropbox link converted to direct download (?raw=1)
   const dropboxURL = "https://www.dropbox.com/scl/fi/o4wch6ragep870qvjoqxc/.xlsx?rlkey=e8l1af7me92btlcf70lnza6oy&st=lf1bwxx0&raw=1";
 
   let workbook = null;
@@ -83,7 +83,7 @@
   const countBadge = $('count');
   const nowDiv = $('now');
 
-  // Live Pacific time
+  // Live US Pacific time
   function updateNow(){
     const fmt = new Intl.DateTimeFormat('en-US', {
       timeZone:'America/Los_Angeles',
@@ -94,7 +94,7 @@
   }
   updateNow(); setInterval(updateNow, 1000);
 
-  // Auto-load from Dropbox
+  // Auto-load Excel from Dropbox
   (async function loadFromDropbox(){
     resetUI();
     try {
@@ -222,6 +222,8 @@
 </script>
 </body>
 </html>
+
+
 
 
 
