@@ -10,7 +10,7 @@
   body { margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Noto Sans SC",sans-serif; background:var(--bg); color:#222; }
   .container { max-width:980px; margin:32px auto; padding:0 16px; }
 
-  /* ✅ Banner inside container (not full width) */
+  /* Banner inside container (not full-width) */
   .banner { text-align:center; margin-bottom:16px; }
   .banner img { max-width:100%; height:auto; border-radius:12px; box-shadow:0 4px 12px rgba(0,0,0,.08); object-fit:contain; }
 
@@ -34,7 +34,7 @@
 <body>
 <div class="container">
 
-  <!-- ✅ Regular banner (within content width) -->
+  <!-- Banner -->
   <div class="banner">
     <img src="./logo.png" alt="一一团 Logo Banner">
   </div>
@@ -68,6 +68,7 @@
     <div id="list" style="margin-top:8px;"></div>
   </div>
 
+  <!-- 到货进度说明 -->
   <div class="card">
     <h2 style="font-size:18px; margin-bottom:10px;">10月26日的团购到货进度：</h2>
     <div style="white-space:pre-line; line-height:1.6;">
@@ -95,10 +96,209 @@
 </div>
 
 <script>
-// (Same JS logic as before: Excel auto-load, fuzzy search, "暂未到货", etc.)
+(function(){
+  // Try Chinese filename first, then fallback to an ASCII name if needed.
+  const excelCandidates = [
+    "./付款和到货情况.xlsx",
+    "./orders.xlsx"    // 可选：若你把文件改名为英文，自动走这里
+  ];
+
+  let workbook = null;
+  const sheetDataMap = new Map();
+  const $ = id => document.getElementById(id);
+  const nameInput = $('name');
+  const caseBox = $('case');
+  const searchBtn = $('searchBtn');
+  const copyBtn = $('copyBtn');
+  const listDiv = $('list');
+  const statusDiv = $('status');
+  const countBadge = $('count');
+  const updateTime = $('updateTime');
+
+  // Load Excel with fallback
+  (async function loadExcel(){
+    resetUI();
+    let lastErr = null;
+    for (const path of excelCandidates) {
+      try {
+        const res = await fetch(path, { cache: "no-store" });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const buf = await res.arrayBuffer();
+        const data = new Uint8Array(buf);
+        workbook = XLSX.read(data, { type: "array" });
+        await afterWorkbookLoaded();
+        return;
+      } catch (e) {
+        lastErr = e;
+      }
+    }
+    console.error(lastErr);
+    setStatus("加载 Excel 文件失败：请确认文件是否与页面在同一目录，或将文件改名为英文（orders.xlsx）。", true);
+  })();
+
+  async function afterWorkbookLoaded(){
+    // Last update time from workbook props (if present)
+    const props = workbook.Props || {};
+    const lastModified = props.ModifiedDate || props.LastSaved || props.DateModified || props.CreatedDate;
+    if (lastModified) {
+      const d = new Date(lastModified);
+      updateTime.textContent = "最后更新时间：" + (isNaN(d) ? String(lastModified) : d.toLocaleString("zh-CN", { timeZone:"America/Los_Angeles" }));
+    } else {
+      updateTime.textContent = "最后更新时间：未知";
+    }
+
+    // Only first 5 sheets
+    const limit = Math.min(5, workbook.SheetNames.length);
+    sheetDataMap.clear();
+    for (let i = 0; i < limit; i++) {
+      const sName = workbook.SheetNames[i];
+      const sheet = workbook.Sheets[sName];
+      const aoa = XLSX.utils.sheet_to_json(sheet, { header:1, raw:true, defval:'' });
+      sheetDataMap.set(sName, aoa);
+    }
+
+    setStatus(`表格加载完成，可以开始查询。`, false);
+    searchBtn.disabled = false;
+  }
+
+  // Events
+  nameInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !searchBtn.disabled) doSearch();
+  });
+  searchBtn.addEventListener('click', doSearch);
+  copyBtn.addEventListener('click', copyResults);
+
+  // Fuzzy matching helpers
+  function escapeRegExp(s){ return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+  function tokenizeCNEN(str){
+    const cn = (str.match(/[\u4e00-\u9fff]/g) || []);
+    const en = (str.match(/[A-Za-z]+/g) || []).map(w => w.toLowerCase());
+    return { cn, en };
+  }
+  function fuzzyMatch(input, target, caseSensitive){
+    if (!input || !target) return false;
+    if (caseSensitive) {
+      if (target === input) return true;
+    } else {
+      if (target.toLowerCase() === input.toLowerCase()) return true;
+    }
+    const { cn, en } = tokenizeCNEN(input);
+    for (const ch of cn) if (target.includes(ch)) return true;
+    const t = caseSensitive ? target : target.toLowerCase();
+    for (const w of en) {
+      const word = caseSensitive ? w : w.toLowerCase();
+      const re = new RegExp(`\\b${escapeRegExp(word)}\\b`);
+      if (re.test(t)) return true;
+    }
+    return false;
+  }
+
+  // Search
+  function doSearch(){
+    if (sheetDataMap.size === 0) { setStatus("Excel 文件未加载。", true); return; }
+    const key = (nameInput.value || "").trim();
+    if (!key) { setStatus("请输入您的接龙名字。", true); return; }
+    const caseSensitive = caseBox.checked;
+
+    const results = [];
+    // Columns: A=0(到货状态), D=3(客户姓名), E=4(接龙内容), F=5(金额)
+    for (const [sheet, aoa] of sheetDataMap) {
+      for (let r = 0; r < aoa.length; r++) {
+        const row = aoa[r]; if (!row) continue;
+        const dVal = String((row[3] ?? '')).trim();
+        if (!dVal && r === 0) continue; // header
+        if (fuzzyMatch(key, dVal, caseSensitive)) {
+          const aRaw = (row[0] ?? '');
+          const aDisplay = String(aRaw).trim() === '' ? '暂未到货' : String(aRaw).trim();
+          const e = row[4] ?? '';
+          const f = formatUSD(row[5]);
+          results.push({ sheet, a: aDisplay, d: dVal, e, f });
+        }
+      }
+    }
+    renderResults(results, key);
+  }
+
+  // Format USD
+  function formatUSD(val){
+    let num = null;
+    if (typeof val === 'number') num = val;
+    else {
+      const s = String(val ?? '').trim().replace(/,/g, '');
+      if (s !== '' && !isNaN(s)) num = Number(s);
+    }
+    if (num === null || !isFinite(num)) return String(val ?? '');
+    return new Intl.NumberFormat('en-US', { style:'currency', currency:'USD' }).format(num);
+  }
+
+  // Render
+  function renderResults(rows, key){
+    countBadge.textContent = rows.length;
+    listDiv.innerHTML = '';
+    if (!rows.length) {
+      setStatus(`没有找到 "${key}" 的记录。`, true);
+      copyBtn.disabled = true;
+      return;
+    }
+    setStatus(`找到 ${rows.length} 条记录。`);
+
+    const table = document.createElement('table');
+    table.innerHTML = `
+      <thead>
+        <tr>
+          <th>序号</th>
+          <th>提货方式</th>
+          <th>到货状态</th>
+          <th>客户姓名</th>
+          <th>接龙内容</th>
+          <th>应付金额（USD）</th>
+        </tr>
+      </thead>
+    `;
+    const tb = document.createElement('tbody');
+    rows.forEach((r, i) => {
+      const tr = document.createElement('tr');
+      [i+1, r.sheet, r.a, r.d, r.e, r.f].forEach(txt => {
+        const td = document.createElement('td'); td.textContent = txt; tr.appendChild(td);
+      });
+      tb.appendChild(tr);
+    });
+    table.appendChild(tb);
+    listDiv.appendChild(table);
+    copyBtn.disabled = false;
+  }
+
+  // Copy TSV
+  async function copyResults(){
+    const rows = [...document.querySelectorAll('#list tbody tr')]
+      .map(tr => [...tr.children].map(td => td.textContent).join('\t'));
+    if (!rows.length) return;
+    const text = ['序号','提货方式','到货状态','客户姓名','接龙内容','应付金额（USD）'].join('\t') + '\n' + rows.join('\n');
+    try {
+      await navigator.clipboard.writeText(text);
+      setStatus("结果已复制到剪贴板。", false, true);
+    } catch {
+      setStatus("复制失败，请手动选择复制。", true);
+    }
+  }
+
+  function setStatus(msg, isError=false, good=false){
+    statusDiv.textContent = msg;
+    statusDiv.className = isError ? 'error' : good ? 'good' : 'muted';
+  }
+
+  function resetUI(){
+    workbook = null; sheetDataMap.clear();
+    listDiv.innerHTML = ''; countBadge.textContent = '0';
+    copyBtn.disabled = true; searchBtn.disabled = true;
+    setStatus("正在加载表格…");
+  }
+})();
 </script>
 </body>
 </html>
+
+
 
 
 
