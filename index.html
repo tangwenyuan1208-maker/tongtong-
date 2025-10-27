@@ -1,13 +1,13 @@
 <!doctype html>
-<html lang="en">
+<html lang="zh">
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Find A/E/F by Column D (GitHub-hosted Excel)</title>
+<title>一一团近期接龙到货情况</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
   :root { --bg:#f6f7fb; --card:#fff; --muted:#666; --accent:#165DFF; --ok:#19be6b; --danger:#fa5151; }
-  body { margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,'Helvetica Neue',Arial; background:var(--bg); color:#222; }
+  body { margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Noto Sans SC",sans-serif; background:var(--bg); color:#222; }
   .container { max-width:980px; margin:32px auto; padding:0 16px; }
   .card { background:var(--card); border-radius:16px; box-shadow:0 6px 20px rgba(0,0,0,.06); padding:20px; margin:16px 0; }
   h1 { font-size:24px; margin:0 0 8px; }
@@ -29,52 +29,43 @@
 <body>
 <div class="container">
   <div class="card">
-    <h1>Find Column A / E / F by Column D</h1>
-    <div class="muted">Excel file is loaded automatically from this site (same folder as this page).</div>
-    <div id="now" class="muted" style="margin-top:6px;"></div>
+    <h1>一一团近期接龙到货情况</h1>
+    <div class="muted">如果到货状态是空白，说明暂时还没到货。</div>
+    <div id="updateTime" class="muted" style="margin-top:6px;"></div>
   </div>
 
   <div class="card">
     <div class="row" style="margin-bottom:10px;">
-      <label>1) Source Excel</label>
-      <span id="fileInfo" class="muted">Loading from GitHub Pages…</span>
-    </div>
-
-    <div class="row" style="margin-bottom:10px;">
-      <label for="name">2) Name to search (Column D)</label>
-      <input type="text" id="name" placeholder="e.g., Alice" />
+      <label>1）搜索姓名（表格第 D 列）</label>
+      <input type="text" id="name" placeholder="输入姓名…" />
       <label class="row" style="gap:6px; font-weight:500;">
         <input type="checkbox" id="case" />
-        Case sensitive
+        区分大小写
       </label>
-      <button id="searchBtn" disabled>Search</button>
+      <button id="searchBtn" disabled>搜索</button>
     </div>
-    <div class="muted">Exact match on Column D; results show Column A, E, and F (USD). Searches the first 5 sheets.</div>
+    <div class="muted">系统会在前 5 个工作表中查找匹配的姓名。</div>
   </div>
 
   <div class="card">
     <div class="row" style="justify-content:space-between;">
-      <div><strong>Results</strong> <span id="count" class="badge">0</span></div>
+      <div><strong>查询结果</strong> <span id="count" class="badge">0</span></div>
       <div class="row">
-        <button id="copyBtn" class="secondary" disabled>Copy all</button>
+        <button id="copyBtn" class="secondary" disabled>复制全部</button>
       </div>
     </div>
-    <div id="status" class="muted" style="margin-top:8px;">Not loaded yet.</div>
+    <div id="status" class="muted" style="margin-top:8px;">正在加载表格…</div>
     <div id="list" style="margin-top:8px;"></div>
   </div>
 </div>
 
 <script>
 (function(){
-  // Relative path (same folder as index.html)
-  // Non-ASCII filename is fine when using a relative URL.
   const excelPath = "./付款和到货情况.xlsx";
 
   let workbook = null;
-  const sheetDataMap = new Map(); // sheetName -> AOA
-
+  const sheetDataMap = new Map();
   const $ = id => document.getElementById(id);
-  const fileInfo = $('fileInfo');
   const nameInput = $('name');
   const caseBox = $('case');
   const searchBtn = $('searchBtn');
@@ -82,29 +73,23 @@
   const listDiv = $('list');
   const statusDiv = $('status');
   const countBadge = $('count');
-  const nowDiv = $('now');
+  const updateTime = $('updateTime');
 
-  // Live US Pacific time
-  function updateNow(){
-    const fmt = new Intl.DateTimeFormat('en-US', {
-      timeZone:'America/Los_Angeles',
-      year:'numeric', month:'long', day:'2-digit',
-      hour:'2-digit', minute:'2-digit', second:'2-digit'
-    });
-    nowDiv.textContent = 'Current time (US Pacific): ' + fmt.format(new Date());
-  }
-  updateNow(); setInterval(updateNow, 1000);
-
-  // Auto-load Excel from same origin
   (async function loadFromSite(){
     resetUI();
     try {
-      // If you place the file in a subfolder (e.g., /data/), change excelPath accordingly.
       const res = await fetch(excelPath, { cache: "no-store" });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const arrayBuffer = await res.arrayBuffer();
       const data = new Uint8Array(arrayBuffer);
       workbook = XLSX.read(data, { type: "array" });
+
+      // 读取文件属性里的最后保存时间
+      const props = workbook.Props || {};
+      const lastModified = props.ModifiedDate || props.LastSaved || props.DateModified || props.CreatedDate;
+      if (lastModified) {
+        updateTime.textContent = "最后更新时间：" + new Date(lastModified).toLocaleString("zh-CN", { timeZone:"America/Los_Angeles" });
+      }
 
       const limit = Math.min(5, workbook.SheetNames.length);
       sheetDataMap.clear();
@@ -115,13 +100,11 @@
         sheetDataMap.set(name, aoa);
       }
 
-      fileInfo.textContent = `Loaded from site ✅ (${Math.min(5, workbook.SheetNames.length)} sheet${workbook.SheetNames.length>1?'s':''})`;
-      setStatus(`Ready to search.`, false);
+      setStatus(`表格加载完成，可以开始查询。`, false);
       searchBtn.disabled = false;
     } catch (err) {
       console.error(err);
-      setStatus("Failed to load Excel from site: " + (err.message || err), true);
-      fileInfo.textContent = "Load failed";
+      setStatus("加载 Excel 文件失败：" + (err.message || err), true);
     }
   })();
 
@@ -132,18 +115,17 @@
   copyBtn.addEventListener('click', copyResults);
 
   function doSearch(){
-    if (sheetDataMap.size === 0) { setStatus("Excel not loaded yet.", true); return; }
+    if (sheetDataMap.size === 0) { setStatus("Excel 文件未加载。", true); return; }
     const key = (nameInput.value || "").trim();
-    if (!key) { setStatus("Please enter a name to search (Column D).", true); return; }
+    if (!key) { setStatus("请输入要查询的姓名（D 列）。", true); return; }
     const caseSensitive = caseBox.checked;
 
     const results = [];
-    // Column mapping by position: A=0, D=3, E=4, F=5
     for (const [sheet, aoa] of sheetDataMap) {
       for (let r = 0; r < aoa.length; r++) {
         const row = aoa[r]; if (!row) continue;
         const dVal = String((row[3] ?? '')).trim();
-        if (!dVal && r === 0) continue; // likely headers
+        if (!dVal && r === 0) continue;
         const match = caseSensitive ? (dVal === key) : (dVal.toLowerCase() === key.toLowerCase());
         if (match) {
           results.push({
@@ -173,16 +155,18 @@
     countBadge.textContent = rows.length;
     listDiv.innerHTML = '';
     if (!rows.length) {
-      setStatus(`No match found for "${key}" in first 5 sheets.`, true);
+      setStatus(`没有找到姓名 "${key}" 的记录。`, true);
       copyBtn.disabled = true;
       return;
     }
-    setStatus(`Found ${rows.length} match(es) for "${key}".`);
+    setStatus(`找到 ${rows.length} 条记录。`);
 
     const table = document.createElement('table');
     table.innerHTML = `
       <thead>
-        <tr><th>#</th><th>Sheet</th><th>Column A</th><th>Column E</th><th>Column F (USD)</th></tr>
+        <tr>
+          <th>序号</th><th>提货方式</th><th>到货状态</th><th>接龙内容</th><th>应付金额（USD）</th>
+        </tr>
       </thead>
     `;
     const tb = document.createElement('tbody');
@@ -202,12 +186,12 @@
     const rows = [...document.querySelectorAll('#list tbody tr')]
       .map(tr => [...tr.children].map(td => td.textContent).join('\t'));
     if (!rows.length) return;
-    const text = ['#','Sheet','Column A','Column E','Column F (USD)'].join('\t') + '\n' + rows.join('\n');
+    const text = ['序号','提货方式','到货状态','接龙内容','应付金额（USD）'].join('\t') + '\n' + rows.join('\n');
     try {
       await navigator.clipboard.writeText(text);
-      setStatus("Copied results to clipboard.", false, true);
+      setStatus("结果已复制到剪贴板。", false, true);
     } catch {
-      setStatus("Copy failed; select text and copy manually.", true);
+      setStatus("复制失败，请手动选择复制。", true);
     }
   }
 
@@ -220,12 +204,13 @@
     workbook = null; sheetDataMap.clear();
     listDiv.innerHTML = ''; countBadge.textContent = '0';
     copyBtn.disabled = true; searchBtn.disabled = true;
-    setStatus("Not loaded yet.");
+    setStatus("正在加载表格…");
   }
 })();
 </script>
 </body>
 </html>
+
 
 
 
