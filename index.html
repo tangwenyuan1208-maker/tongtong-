@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Find A/E/F by Column D (First 5 Sheets)</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+  :root { --bg:#f6f7fb; --card:#fff; --muted:#666; --accent:#165DFF; --ok:#19be6b; --danger:#fa5151; }
+  body { margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,'Helvetica Neue',Arial; background:var(--bg); color:#222; }
+  .container { max-width:980px; margin:32px auto; padding:0 16px; }
+  .card { background:var(--card); border-radius:16px; box-shadow:0 6px 20px rgba(0,0,0,.06); padding:20px; margin:16px 0; }
+  h1 { font-size:24px; margin:0 0 8px; }
+  .muted { color:var(--muted); font-size:14px; }
+  .row { display:flex; flex-wrap:wrap; gap:12px; align-items:center; }
+  label { font-weight:600; }
+  input[type="text"] {
+    padding:10px 12px; border:1px solid #e6e6e6; border-radius:10px; background:#fafafa; min-width:220px;
+  }
+  button { background:var(--accent); color:#fff; border:none; border-radius:10px; padding:10px 14px; cursor:pointer; }
+  button.secondary { background:#333; }
+  button:disabled { opacity:.6; cursor:not-allowed; }
+  .badge { display:inline-block; padding:2px 8px; border-radius:999px; font-size:12px; background:#eee; }
+  table { width:100%; border-collapse:collapse; margin-top:10px; }
+  th, td { text-align:left; padding:10px; border-bottom:1px solid #f0f0f0; }
+  th { background:#fafafa; }
+  .error { color:var(--danger); }
+  .good { color:var(--ok); }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="card">
+    <h1>Find Column A / E / F by Column D (First 5 Sheets)</h1>
+    <div class="muted">All processing happens in your browser. No data is uploaded.</div>
+    <div id="now" class="muted" style="margin-top:6px;"></div>
+  </div>
+
+  <div class="card">
+    <div class="row" style="margin-bottom:10px;">
+      <label for="file">1) Choose Excel file (.xlsx)</label>
+      <input type="file" id="file" accept=".xlsx,.xls" />
+      <span id="fileInfo" class="muted">(no file)</span>
+    </div>
+
+    <div class="row" style="margin-bottom:10px;">
+      <label for="name">2) Name to search (Column D)</label>
+      <input type="text" id="name" placeholder="e.g., Alice" />
+      <label class="row" style="gap:6px; font-weight:500;">
+        <input type="checkbox" id="case" />
+        Case sensitive
+      </label>
+      <button id="searchBtn" disabled>Search</button>
+    </div>
+    <div class="muted">This will search only the first five sheets of your Excel file. For each match (Column D), it shows Column A, E, and F (F in USD).</div>
+  </div>
+
+  <div class="card">
+    <div class="row" style="justify-content:space-between;">
+      <div><strong>Results</strong> <span id="count" class="badge">0</span></div>
+      <div class="row">
+        <button id="copyBtn" class="secondary" disabled>Copy all</button>
+      </div>
+    </div>
+    <div id="status" class="muted" style="margin-top:8px;">No search yet.</div>
+    <div id="list" style="margin-top:8px;"></div>
+  </div>
+</div>
+
+<script>
+(function(){
+  let workbook = null;
+  const sheetDataMap = new Map(); // name -> AOA data
+
+  const $ = id => document.getElementById(id);
+  const fileInput = $('file');
+  const fileInfo = $('fileInfo');
+  const nameInput = $('name');
+  const caseBox = $('case');
+  const searchBtn = $('searchBtn');
+  const copyBtn = $('copyBtn');
+  const listDiv = $('list');
+  const statusDiv = $('status');
+  const countBadge = $('count');
+  const nowDiv = $('now');
+
+  // Pacific time clock
+  function updateNow(){
+    const fmt = new Intl.DateTimeFormat('en-US', {
+      timeZone:'America/Los_Angeles',
+      year:'numeric', month:'long', day:'2-digit',
+      hour:'2-digit', minute:'2-digit', second:'2-digit'
+    });
+    nowDiv.textContent = 'Current time (US Pacific): ' + fmt.format(new Date());
+  }
+  updateNow(); setInterval(updateNow, 1000);
+
+  fileInput.addEventListener('change', async e=>{
+    resetUI();
+    const file = e.target.files[0];
+    if(!file) return;
+    fileInfo.textContent = file.name;
+    try{
+      const data = await file.arrayBuffer();
+      workbook = XLSX.read(data,{type:'array'});
+      if(!workbook.SheetNames.length) throw new Error("No sheets found.");
+
+      sheetDataMap.clear();
+      const limit = Math.min(5, workbook.SheetNames.length);
+      for(let i=0;i<limit;i++){
+        const name = workbook.SheetNames[i];
+        const sheet = workbook.Sheets[name];
+        const aoa = XLSX.utils.sheet_to_json(sheet,{header:1,raw:true,defval:''});
+        sheetDataMap.set(name, aoa);
+      }
+
+      setStatus(`Loaded ${limit} sheet(s) (max 5). Ready to search.`);
+      searchBtn.disabled=false;
+    }catch(err){
+      setStatus("Error reading Excel: "+(err.message||err),true);
+    }
+  });
+
+  nameInput.addEventListener('keydown',e=>{
+    if(e.key==='Enter'&&!searchBtn.disabled) doSearch();
+  });
+  searchBtn.addEventListener('click',doSearch);
+  copyBtn.addEventListener('click',copyResults);
+
+  function doSearch(){
+    if(sheetDataMap.size===0){setStatus("Please choose a file first.",true);return;}
+    const key=nameInput.value.trim();
+    if(!key){setStatus("Please enter a name to search (Column D).",true);return;}
+    const caseSensitive=caseBox.checked;
+    const results=[];
+    for(const [sheet,aoa] of sheetDataMap){
+      for(let r=0;r<aoa.length;r++){
+        const row=aoa[r]; if(!row) continue;
+        const dVal=String(row[3]??'').trim();
+        if(!dVal&&r===0) continue;
+        const match=caseSensitive?(dVal===key):(dVal.toLowerCase()===key.toLowerCase());
+        if(match){
+          results.push({
+            sheet,
+            a: row[0]??'',
+            e: row[4]??'',
+            f: formatUSD(row[5])
+          });
+        }
+      }
+    }
+    renderResults(results,key);
+  }
+
+  function formatUSD(val){
+    let num=null;
+    if(typeof val==='number') num=val;
+    else{
+      const s=String(val??'').trim().replace(/,/g,'');
+      if(s!==''&&!isNaN(s)) num=Number(s);
+    }
+    if(num===null||!isFinite(num)) return String(val??'');
+    return new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'}).format(num);
+  }
+
+  function renderResults(rows,key){
+    countBadge.textContent=rows.length;
+    listDiv.innerHTML='';
+    if(!rows.length){setStatus(`No match found for "${key}" in first 5 sheets.`,true);copyBtn.disabled=true;return;}
+    setStatus(`Found ${rows.length} match(es) for "${key}" in first 5 sheets.`);
+    const table=document.createElement('table');
+    table.innerHTML='<thead><tr><th>#</th><th>Sheet</th><th>Column A</th><th>Column E</th><th>Column F (USD)</th></tr></thead>';
+    const tb=document.createElement('tbody');
+    rows.forEach((r,i)=>{
+      const tr=document.createElement('tr');
+      [i+1,r.sheet,r.a,r.e,r.f].forEach(txt=>{
+        const td=document.createElement('td');td.textContent=txt;tr.appendChild(td);
+      });
+      tb.appendChild(tr);
+    });
+    table.appendChild(tb);
+    listDiv.appendChild(table);
+    copyBtn.disabled=false;
+  }
+
+  async function copyResults(){
+    const rows=[...document.querySelectorAll('#list tbody tr')].map(tr=>[...tr.children].map(td=>td.textContent).join('\t'));
+    if(!rows.length)return;
+    const text=['#','Sheet','Column A','Column E','Column F (USD)'].join('\t')+'\n'+rows.join('\n');
+    try{
+      await navigator.clipboard.writeText(text);
+      setStatus("Copied results to clipboard.",false,true);
+    }catch{setStatus("Copy failed; select text manually.",true);}
+  }
+
+  function setStatus(msg,err=false,good=false){
+    statusDiv.textContent=msg;
+    statusDiv.className=err?'error':good?'good':'muted';
+  }
+  function resetUI(){
+    workbook=null;sheetDataMap.clear();listDiv.innerHTML='';countBadge.textContent='0';
+    copyBtn.disabled=true;searchBtn.disabled=true;setStatus("No search yet.");
+  }
+})();
+</script>
+</body>
+</html>
+
+
+
