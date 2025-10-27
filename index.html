@@ -75,7 +75,7 @@
   const countBadge = $('count');
   const updateTime = $('updateTime');
 
-  // -------- Load Excel (first 5 sheets) --------
+  // === Load Excel ===
   (async function loadFromSite(){
     resetUI();
     try {
@@ -85,7 +85,6 @@
       const data = new Uint8Array(arrayBuffer);
       workbook = XLSX.read(data, { type: "array" });
 
-      // show last saved time (if present in workbook props)
       const props = workbook.Props || {};
       const lastModified = props.ModifiedDate || props.LastSaved || props.DateModified || props.CreatedDate;
       if (lastModified) {
@@ -110,37 +109,29 @@
     }
   })();
 
-  // -------- Events --------
+  // === Events ===
   nameInput.addEventListener('keydown', e => {
     if (e.key === 'Enter' && !searchBtn.disabled) doSearch();
   });
   searchBtn.addEventListener('click', doSearch);
   copyBtn.addEventListener('click', copyResults);
 
-  // -------- Matching helpers --------
+  // === Matching logic ===
   function escapeRegExp(s){ return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
-
   function tokenizeCNEN(str){
-    // Chinese: single CJK characters; English: words [A-Za-z]+
     const cn = (str.match(/[\u4e00-\u9fff]/g) || []);
     const en = (str.match(/[A-Za-z]+/g) || []).map(w => w.toLowerCase());
     return { cn, en };
   }
-
   function fuzzyMatch(input, target, caseSensitive){
-    // exact match first
+    if (!input || !target) return false;
     if (caseSensitive) {
       if (target === input) return true;
     } else {
       if (target.toLowerCase() === input.toLowerCase()) return true;
     }
-    // otherwise: any Chinese char OR any English word present
     const { cn, en } = tokenizeCNEN(input);
-    // CN chars: presence anywhere
-    for (const ch of cn) {
-      if (target.includes(ch)) return true;
-    }
-    // EN words: presence with word boundary (case-insensitive unless caseSensitive)
+    for (const ch of cn) if (target.includes(ch)) return true;
     const t = caseSensitive ? target : target.toLowerCase();
     for (const w of en) {
       const word = caseSensitive ? w : w.toLowerCase();
@@ -150,7 +141,7 @@
     return false;
   }
 
-  // -------- Search --------
+  // === Search ===
   function doSearch(){
     if (sheetDataMap.size === 0) { setStatus("Excel 文件未加载。", true); return; }
     const key = (nameInput.value || "").trim();
@@ -158,27 +149,25 @@
     const caseSensitive = caseBox.checked;
 
     const results = [];
-    // Columns by position: A=0 (到货状态), D=3 (姓名), E=4 (接龙内容), F=5 (金额)
+    // Columns: A=0(到货状态), D=3(姓名), E=4(接龙内容), F=5(金额)
     for (const [sheet, aoa] of sheetDataMap) {
       for (let r = 0; r < aoa.length; r++) {
         const row = aoa[r]; if (!row) continue;
-        const dValRaw = row[3];
-        const dVal = String((dValRaw ?? '')).trim();
-        if (!dVal && r === 0) continue; // likely header
+        const dVal = String((row[3] ?? '')).trim();
+        if (!dVal && r === 0) continue;
         if (fuzzyMatch(key, dVal, caseSensitive)) {
           const aRaw = (row[0] ?? '');
-          const aStr = String(aRaw).trim();
-          const aDisplay = aStr === '' ? '暂未到货' : aStr; // <= rule 1
+          const aDisplay = String(aRaw).trim() === '' ? '暂未到货' : String(aRaw).trim();
           const e = row[4] ?? '';
           const f = formatUSD(row[5]);
-          results.push({ sheet, a: aDisplay, e, f });
+          results.push({ sheet, a: aDisplay, d: dVal, e, f });
         }
       }
     }
     renderResults(results, key);
   }
 
-  // -------- Rendering & utils --------
+  // === Helpers ===
   function formatUSD(val){
     let num = null;
     if (typeof val === 'number') num = val;
@@ -204,14 +193,19 @@
     table.innerHTML = `
       <thead>
         <tr>
-          <th>序号</th><th>提货方式</th><th>到货状态</th><th>接龙内容</th><th>应付金额（USD）</th>
+          <th>序号</th>
+          <th>提货方式</th>
+          <th>到货状态</th>
+          <th>客户姓名</th>
+          <th>接龙内容</th>
+          <th>应付金额（USD）</th>
         </tr>
       </thead>
     `;
     const tb = document.createElement('tbody');
     rows.forEach((r, i) => {
       const tr = document.createElement('tr');
-      [i+1, r.sheet, r.a, r.e, r.f].forEach(txt => {
+      [i+1, r.sheet, r.a, r.d, r.e, r.f].forEach(txt => {
         const td = document.createElement('td'); td.textContent = txt; tr.appendChild(td);
       });
       tb.appendChild(tr);
@@ -225,7 +219,7 @@
     const rows = [...document.querySelectorAll('#list tbody tr')]
       .map(tr => [...tr.children].map(td => td.textContent).join('\t'));
     if (!rows.length) return;
-    const text = ['序号','提货方式','到货状态','接龙内容','应付金额（USD）'].join('\t') + '\n' + rows.join('\n');
+    const text = ['序号','提货方式','到货状态','客户姓名','接龙内容','应付金额（USD）'].join('\t') + '\n' + rows.join('\n');
     try {
       await navigator.clipboard.writeText(text);
       setStatus("结果已复制到剪贴板。", false, true);
@@ -249,6 +243,7 @@
 </script>
 </body>
 </html>
+
 
 
 
