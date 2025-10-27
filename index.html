@@ -56,12 +56,38 @@
     <div id="status" class="muted" style="margin-top:8px;">正在加载表格…</div>
     <div id="list" style="margin-top:8px;"></div>
   </div>
+
+  <!-- 新增：到货进度说明 -->
+  <div class="card">
+    <h2 style="font-size:18px; margin-bottom:10px;">10月26日的团购到货进度：</h2>
+    <div style="white-space:pre-line; line-height:1.6;">
+1. rototobebe本周会大量到货80%。
+
+2. miki33团鞋子衣服下单后三周左右到货的节奏，在陆续到货。 
+
+3. petit main还没有从日本发出，预计十一月中上旬到货，有部分是还未发售的款式，要十一月中下旬到货。
+
+4. 香水团爱马仕香水到齐，jo malone dipytique预计还要1-2周左右。
+
+5. stample到齐50%，仍在继续到货。
+
+6. 部分之前的skater被卡在海关两个月，团长已重新订货，预计万圣节之后到货。
+
+7. 贝亲指甲刀到齐，其他的下两周到齐。
+
+8. miki袜子到齐，福袋十二月中下旬到货。
+
+9. gelato pique已陆续从日本寄出，预计下两周左右到齐。
+
+10. labubu刚截单，预计十一月中旬左右到齐。
+    </div>
+  </div>
 </div>
 
 <script>
+/* === JS 逻辑与前版相同 === */
 (function(){
   const excelPath = "./付款和到货情况.xlsx";
-
   let workbook = null;
   const sheetDataMap = new Map();
   const $ = id => document.getElementById(id);
@@ -74,7 +100,6 @@
   const countBadge = $('count');
   const updateTime = $('updateTime');
 
-  // === Load Excel ===
   (async function loadFromSite(){
     resetUI();
     try {
@@ -108,14 +133,12 @@
     }
   })();
 
-  // === Events ===
   nameInput.addEventListener('keydown', e => {
     if (e.key === 'Enter' && !searchBtn.disabled) doSearch();
   });
   searchBtn.addEventListener('click', doSearch);
   copyBtn.addEventListener('click', copyResults);
 
-  // === Matching logic ===
   function escapeRegExp(s){ return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
   function tokenizeCNEN(str){
     const cn = (str.match(/[\u4e00-\u9fff]/g) || []);
@@ -140,13 +163,11 @@
     return false;
   }
 
-  // === Search ===
   function doSearch(){
     if (sheetDataMap.size === 0) { setStatus("Excel 文件未加载。", true); return; }
     const key = (nameInput.value || "").trim();
     if (!key) { setStatus("请输入您的接龙名字。", true); return; }
     const caseSensitive = caseBox.checked;
-
     const results = [];
     for (const [sheet, aoa] of sheetDataMap) {
       for (let r = 0; r < aoa.length; r++) {
@@ -165,7 +186,6 @@
     renderResults(results, key);
   }
 
-  // === Helpers ===
   function formatUSD(val){
     let num = null;
     if (typeof val === 'number') num = val;
@@ -241,6 +261,8 @@
 </script>
 </body>
 </html>
+
+
 
 
 
