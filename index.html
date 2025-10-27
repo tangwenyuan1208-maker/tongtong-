@@ -10,7 +10,6 @@
   body { margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Noto Sans SC",sans-serif; background:var(--bg); color:#222; }
   .container { max-width:980px; margin:32px auto; padding:0 16px; }
 
-  /* ✅ Banner inside container */
   .banner { text-align:center; margin-bottom:16px; }
   .banner img { max-width:100%; height:auto; border-radius:12px; box-shadow:0 4px 12px rgba(0,0,0,.08); object-fit:contain; }
 
@@ -24,12 +23,19 @@
   button.secondary { background:#333; }
   button:disabled { opacity:.6; cursor:not-allowed; }
   .badge { display:inline-block; padding:2px 8px; border-radius:999px; font-size:12px; background:#eee; }
-  table { width:100%; border-collapse:collapse; margin-top:10px; }
-  th, td { text-align:left; padding:10px; border-bottom:1px solid #f0f0f0; }
+
+  /* ✅ Table adjustments */
+  table { width:100%; border-collapse:collapse; margin-top:10px; table-layout:fixed; }
+  th, td { text-align:left; padding:10px; border-bottom:1px solid #f0f0f0; word-wrap:break-word; }
   th { background:#fafafa; }
+  th:nth-child(3), td:nth-child(3) { width:120px; }  /* 到货状态 */
+  th:nth-child(5), td:nth-child(5) { width:200px; }  /* 接龙内容 */
+  th:nth-child(6), td:nth-child(6) { width:140px; }  /* 金额列 */
+
   .error { color:var(--danger); }
   .good { color:var(--ok); }
 </style>
+
 </head>
 <body>
 <div class="container">
@@ -276,6 +282,7 @@
 </script>
 </body>
 </html>
+
 
 
 
