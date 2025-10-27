@@ -113,6 +113,7 @@ bayareaselect 绿植🍃头像
 <script>
 (function(){
   const excelPath = "./orders.xlsx";  // ✅ uses your renamed Excel file
+  const LOG_ENDPOINT = "https://script.google.com/macros/s/AKfycbyJxw1wJbYRZMGmy8vjZ41kTEmbpCZzk-e-DvyksbqFNPvhjiw8Mek_lpg8gRkodm7iug/exec"; // <-- paste your Apps Script Web App URL here
 
   let workbook = null;
   const sheetDataMap = new Map();
@@ -192,6 +193,28 @@ bayareaselect 绿植🍃头像
     return false;
   }
 
+
+  // ✅ ADD THIS NEW FUNCTION HERE
+  async function logSearch(name, matches) {
+    try {
+      const payload = {
+        name,
+        matches,
+        page: location.href,
+        ua: navigator.userAgent
+      };
+      await fetch(LOG_ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        mode: 'no-cors',
+        body: JSON.stringify(payload)
+      });
+    } catch (e) {
+      console.warn('logSearch failed', e);
+    }
+  }
+
+  
   // Search
   function doSearch(){
     if (sheetDataMap.size === 0) { setStatus("Excel 文件未加载。", true); return; }
@@ -214,6 +237,7 @@ bayareaselect 绿植🍃头像
         }
       }
     }
+        logSearch(key, results.length);
     renderResults(results, key);
   }
 
@@ -291,6 +315,7 @@ bayareaselect 绿植🍃头像
 </script>
 </body>
 </html>
+
 
 
 
