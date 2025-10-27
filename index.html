@@ -10,7 +10,7 @@
   body { margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Noto Sans SC",sans-serif; background:var(--bg); color:#222; }
   .container { max-width:980px; margin:32px auto; padding:0 16px; }
 
-  /* Banner inside container (not full-width) */
+  /* ✅ Banner inside container */
   .banner { text-align:center; margin-bottom:16px; }
   .banner img { max-width:100%; height:auto; border-radius:12px; box-shadow:0 4px 12px rgba(0,0,0,.08); object-fit:contain; }
 
@@ -68,7 +68,7 @@
     <div id="list" style="margin-top:8px;"></div>
   </div>
 
-  <!-- 到货进度说明 -->
+  <!-- 团购到货进度 -->
   <div class="card">
     <h2 style="font-size:18px; margin-bottom:10px;">10月26日的团购到货进度：</h2>
     <div style="white-space:pre-line; line-height:1.6;">
@@ -97,11 +97,7 @@
 
 <script>
 (function(){
-  // Try Chinese filename first, then fallback to an ASCII name if needed.
-  const excelCandidates = [
-    "./付款和到货情况.xlsx",
-    "./orders.xlsx"    // 可选：若你把文件改名为英文，自动走这里
-  ];
+  const excelPath = "./orders.xlsx";  // ✅ uses your renamed Excel file
 
   let workbook = null;
   const sheetDataMap = new Map();
@@ -115,29 +111,23 @@
   const countBadge = $('count');
   const updateTime = $('updateTime');
 
-  // Load Excel with fallback
+  // Auto-load orders.xlsx
   (async function loadExcel(){
     resetUI();
-    let lastErr = null;
-    for (const path of excelCandidates) {
-      try {
-        const res = await fetch(path, { cache: "no-store" });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const buf = await res.arrayBuffer();
-        const data = new Uint8Array(buf);
-        workbook = XLSX.read(data, { type: "array" });
-        await afterWorkbookLoaded();
-        return;
-      } catch (e) {
-        lastErr = e;
-      }
+    try {
+      const res = await fetch(excelPath, { cache: "no-store" });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const buf = await res.arrayBuffer();
+      const data = new Uint8Array(buf);
+      workbook = XLSX.read(data, { type: "array" });
+      await afterWorkbookLoaded();
+    } catch (e) {
+      console.error(e);
+      setStatus("加载 Excel 文件失败：请确认 orders.xlsx 是否与页面在同一目录下。", true);
     }
-    console.error(lastErr);
-    setStatus("加载 Excel 文件失败：请确认文件是否与页面在同一目录，或将文件改名为英文（orders.xlsx）。", true);
   })();
 
   async function afterWorkbookLoaded(){
-    // Last update time from workbook props (if present)
     const props = workbook.Props || {};
     const lastModified = props.ModifiedDate || props.LastSaved || props.DateModified || props.CreatedDate;
     if (lastModified) {
@@ -147,7 +137,6 @@
       updateTime.textContent = "最后更新时间：未知";
     }
 
-    // Only first 5 sheets
     const limit = Math.min(5, workbook.SheetNames.length);
     sheetDataMap.clear();
     for (let i = 0; i < limit; i++) {
@@ -168,7 +157,7 @@
   searchBtn.addEventListener('click', doSearch);
   copyBtn.addEventListener('click', copyResults);
 
-  // Fuzzy matching helpers
+  // Fuzzy matching
   function escapeRegExp(s){ return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
   function tokenizeCNEN(str){
     const cn = (str.match(/[\u4e00-\u9fff]/g) || []);
@@ -177,17 +166,12 @@
   }
   function fuzzyMatch(input, target, caseSensitive){
     if (!input || !target) return false;
-    if (caseSensitive) {
-      if (target === input) return true;
-    } else {
-      if (target.toLowerCase() === input.toLowerCase()) return true;
-    }
+    if (caseSensitive ? target === input : target.toLowerCase() === input.toLowerCase()) return true;
     const { cn, en } = tokenizeCNEN(input);
     for (const ch of cn) if (target.includes(ch)) return true;
     const t = caseSensitive ? target : target.toLowerCase();
     for (const w of en) {
-      const word = caseSensitive ? w : w.toLowerCase();
-      const re = new RegExp(`\\b${escapeRegExp(word)}\\b`);
+      const re = new RegExp(`\\b${escapeRegExp(w)}\\b`);
       if (re.test(t)) return true;
     }
     return false;
@@ -199,14 +183,13 @@
     const key = (nameInput.value || "").trim();
     if (!key) { setStatus("请输入您的接龙名字。", true); return; }
     const caseSensitive = caseBox.checked;
-
     const results = [];
-    // Columns: A=0(到货状态), D=3(客户姓名), E=4(接龙内容), F=5(金额)
+
     for (const [sheet, aoa] of sheetDataMap) {
       for (let r = 0; r < aoa.length; r++) {
         const row = aoa[r]; if (!row) continue;
         const dVal = String((row[3] ?? '')).trim();
-        if (!dVal && r === 0) continue; // header
+        if (!dVal && r === 0) continue;
         if (fuzzyMatch(key, dVal, caseSensitive)) {
           const aRaw = (row[0] ?? '');
           const aDisplay = String(aRaw).trim() === '' ? '暂未到货' : String(aRaw).trim();
@@ -219,19 +202,17 @@
     renderResults(results, key);
   }
 
-  // Format USD
   function formatUSD(val){
     let num = null;
     if (typeof val === 'number') num = val;
     else {
       const s = String(val ?? '').trim().replace(/,/g, '');
-      if (s !== '' && !isNaN(s)) num = Number(s);
+      if (s && !isNaN(s)) num = Number(s);
     }
     if (num === null || !isFinite(num)) return String(val ?? '');
     return new Intl.NumberFormat('en-US', { style:'currency', currency:'USD' }).format(num);
   }
 
-  // Render
   function renderResults(rows, key){
     countBadge.textContent = rows.length;
     listDiv.innerHTML = '';
@@ -253,8 +234,7 @@
           <th>接龙内容</th>
           <th>应付金额（USD）</th>
         </tr>
-      </thead>
-    `;
+      </thead>`;
     const tb = document.createElement('tbody');
     rows.forEach((r, i) => {
       const tr = document.createElement('tr');
@@ -268,7 +248,6 @@
     copyBtn.disabled = false;
   }
 
-  // Copy TSV
   async function copyResults(){
     const rows = [...document.querySelectorAll('#list tbody tr')]
       .map(tr => [...tr.children].map(td => td.textContent).join('\t'));
@@ -297,6 +276,8 @@
 </script>
 </body>
 </html>
+
+
 
 
 
