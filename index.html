@@ -44,7 +44,7 @@
       </label>
       <button id="searchBtn" disabled>搜索</button>
     </div>
-    <div class="muted">系统会在前 5 个工作表中查找匹配的姓名。</div>
+    <div class="muted">系统会在前 5 个工作表中查找：先尝试全匹配；若不全匹配，只要输入中的任意一个汉字或英文单词出现在 D 列，即视为匹配。</div>
   </div>
 
   <div class="card">
@@ -75,6 +75,7 @@
   const countBadge = $('count');
   const updateTime = $('updateTime');
 
+  // -------- Load Excel (first 5 sheets) --------
   (async function loadFromSite(){
     resetUI();
     try {
@@ -84,20 +85,21 @@
       const data = new Uint8Array(arrayBuffer);
       workbook = XLSX.read(data, { type: "array" });
 
-      // 读取文件属性里的最后保存时间
+      // show last saved time (if present in workbook props)
       const props = workbook.Props || {};
       const lastModified = props.ModifiedDate || props.LastSaved || props.DateModified || props.CreatedDate;
       if (lastModified) {
-        updateTime.textContent = "最后更新时间：" + new Date(lastModified).toLocaleString("zh-CN", { timeZone:"America/Los_Angeles" });
+        const d = new Date(lastModified);
+        updateTime.textContent = "最后更新时间：" + (isNaN(d) ? String(lastModified) : d.toLocaleString("zh-CN", { timeZone:"America/Los_Angeles" }));
       }
 
       const limit = Math.min(5, workbook.SheetNames.length);
       sheetDataMap.clear();
       for (let i = 0; i < limit; i++) {
-        const name = workbook.SheetNames[i];
-        const sheet = workbook.Sheets[name];
+        const sName = workbook.SheetNames[i];
+        const sheet = workbook.Sheets[sName];
         const aoa = XLSX.utils.sheet_to_json(sheet, { header:1, raw:true, defval:'' });
-        sheetDataMap.set(name, aoa);
+        sheetDataMap.set(sName, aoa);
       }
 
       setStatus(`表格加载完成，可以开始查询。`, false);
@@ -108,12 +110,47 @@
     }
   })();
 
+  // -------- Events --------
   nameInput.addEventListener('keydown', e => {
     if (e.key === 'Enter' && !searchBtn.disabled) doSearch();
   });
   searchBtn.addEventListener('click', doSearch);
   copyBtn.addEventListener('click', copyResults);
 
+  // -------- Matching helpers --------
+  function escapeRegExp(s){ return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+
+  function tokenizeCNEN(str){
+    // Chinese: single CJK characters; English: words [A-Za-z]+
+    const cn = (str.match(/[\u4e00-\u9fff]/g) || []);
+    const en = (str.match(/[A-Za-z]+/g) || []).map(w => w.toLowerCase());
+    return { cn, en };
+  }
+
+  function fuzzyMatch(input, target, caseSensitive){
+    // exact match first
+    if (caseSensitive) {
+      if (target === input) return true;
+    } else {
+      if (target.toLowerCase() === input.toLowerCase()) return true;
+    }
+    // otherwise: any Chinese char OR any English word present
+    const { cn, en } = tokenizeCNEN(input);
+    // CN chars: presence anywhere
+    for (const ch of cn) {
+      if (target.includes(ch)) return true;
+    }
+    // EN words: presence with word boundary (case-insensitive unless caseSensitive)
+    const t = caseSensitive ? target : target.toLowerCase();
+    for (const w of en) {
+      const word = caseSensitive ? w : w.toLowerCase();
+      const re = new RegExp(`\\b${escapeRegExp(word)}\\b`);
+      if (re.test(t)) return true;
+    }
+    return false;
+  }
+
+  // -------- Search --------
   function doSearch(){
     if (sheetDataMap.size === 0) { setStatus("Excel 文件未加载。", true); return; }
     const key = (nameInput.value || "").trim();
@@ -121,25 +158,27 @@
     const caseSensitive = caseBox.checked;
 
     const results = [];
+    // Columns by position: A=0 (到货状态), D=3 (姓名), E=4 (接龙内容), F=5 (金额)
     for (const [sheet, aoa] of sheetDataMap) {
       for (let r = 0; r < aoa.length; r++) {
         const row = aoa[r]; if (!row) continue;
-        const dVal = String((row[3] ?? '')).trim();
-        if (!dVal && r === 0) continue;
-        const match = caseSensitive ? (dVal === key) : (dVal.toLowerCase() === key.toLowerCase());
-        if (match) {
-          results.push({
-            sheet,
-            a: row[0] ?? '',
-            e: row[4] ?? '',
-            f: formatUSD(row[5])
-          });
+        const dValRaw = row[3];
+        const dVal = String((dValRaw ?? '')).trim();
+        if (!dVal && r === 0) continue; // likely header
+        if (fuzzyMatch(key, dVal, caseSensitive)) {
+          const aRaw = (row[0] ?? '');
+          const aStr = String(aRaw).trim();
+          const aDisplay = aStr === '' ? '暂未到货' : aStr; // <= rule 1
+          const e = row[4] ?? '';
+          const f = formatUSD(row[5]);
+          results.push({ sheet, a: aDisplay, e, f });
         }
       }
     }
     renderResults(results, key);
   }
 
+  // -------- Rendering & utils --------
   function formatUSD(val){
     let num = null;
     if (typeof val === 'number') num = val;
@@ -210,6 +249,8 @@
 </script>
 </body>
 </html>
+
+
 
 
 
