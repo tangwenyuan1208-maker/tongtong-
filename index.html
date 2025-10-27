@@ -10,24 +10,9 @@
   body { margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Noto Sans SC",sans-serif; background:var(--bg); color:#222; }
   .container { max-width:980px; margin:32px auto; padding:0 16px; }
 
-  /* ✅ Full-width banner with adaptive crop */
-  .banner {
-    width:100vw;
-    position:relative;
-    left:50%;
-    right:50%;
-    margin-left:-50vw;
-    margin-right:-50vw;
-    height:220px; /* 可根据需要调整高度 */
-    overflow:hidden;
-  }
-  .banner img {
-    width:100%;
-    height:100%;
-    object-fit:cover;      /* 自适应高度裁剪 */
-    object-position:center;/* 保持居中裁剪 */
-    display:block;
-  }
+  /* ✅ Banner inside container (not full width) */
+  .banner { text-align:center; margin-bottom:16px; }
+  .banner img { max-width:100%; height:auto; border-radius:12px; box-shadow:0 4px 12px rgba(0,0,0,.08); object-fit:contain; }
 
   .card { background:var(--card); border-radius:16px; box-shadow:0 6px 20px rgba(0,0,0,.06); padding:20px; margin:16px 0; }
   h1 { font-size:24px; margin:0 0 8px; }
@@ -47,13 +32,13 @@
 </style>
 </head>
 <body>
-
-<!-- ✅ Full-width adaptive banner -->
-<div class="banner">
-  <img src="./logo.png" alt="一一团 Banner">
-</div>
-
 <div class="container">
+
+  <!-- ✅ Regular banner (within content width) -->
+  <div class="banner">
+    <img src="./logo.png" alt="一一团 Logo Banner">
+  </div>
+
   <div class="card">
     <h1>一一团近期接龙到货情况</h1>
     <div class="muted">如果到货状态是空白，说明暂时还没到货。</div>
@@ -110,10 +95,12 @@
 </div>
 
 <script>
-// 全部 JS 与前版本相同（省略）—— 包含加载 Excel、模糊匹配、显示结果等完整功能
+// (Same JS logic as before: Excel auto-load, fuzzy search, "暂未到货", etc.)
 </script>
 </body>
 </html>
+
+
 
 
 
