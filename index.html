@@ -25,13 +25,28 @@
   .badge { display:inline-block; padding:2px 8px; border-radius:999px; font-size:12px; background:#eee; }
 
   /* Table */
-  table { width:100%; border-collapse:collapse; margin-top:10px; table-layout:fixed; }
-  th, td { text-align:left; padding:10px; border-bottom:1px solid #f0f0f0; word-wrap:break-word; }
+  table { width:100%; border-collapse:collapse; margin-top:10px; table-layout:auto; }
+  th, td { text-align:left; padding:10px; border-bottom:1px solid #f0f0f0; vertical-align:top; }
   th { background:#fafafa; }
+  td, th { word-break:break-word; overflow-wrap:break-word; }
+
+  /* Detail (second) row styling */
+  .detail-row td { background:#fafafa; font-size:14px; line-height:1.5; }
+  .detail-meta { display:flex; gap:16px; flex-wrap:wrap; }
+  .detail-meta b { color:#333; }
+
+  /* highlight */
   mark { background: var(--hl); padding:0 .15em; border-radius:.2em; }
 
   .error { color:var(--danger); }
   .good { color:var(--ok); }
+
+  /* Mobile tweaks */
+  @media (max-width: 600px) {
+    body { font-size:15px; }
+    th, td { padding:8px; }
+    .detail-row td { font-size:13px; }
+  }
 </style>
 </head>
 <body>
@@ -178,14 +193,11 @@
   showPayStatusBox.addEventListener('change', () => { doSearch(); });
   copyBtn.addEventListener('click', copyResults);
 
-  /* =========================
-     Matching helpers & highlight
-     规则：
+  /* ========== Matching & Highlight Rules ==========
      - 中文：至少两个连续汉字匹配
      - 英文：至少一个完整英文单词匹配（不区分大小写）
      - 特殊符号忽略
-     ========================= */
-
+     ============================================== */
   function extractTokensCNEN(input){
     const cnSeq = (input.match(/[\u4e00-\u9fff]+/g) || []);
     const cnSubstrings = [];
@@ -222,7 +234,6 @@
   function escapeRegExp(s){ return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
   function escapeHTML(s){ return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
-  // 返回带 <mark> 的 HTML，用于高亮“客户姓名”列
   function highlightMatches(userInput, targetText){
     const text = String(targetText || '');
     if (!userInput || !text) return escapeHTML(text);
@@ -230,7 +241,6 @@
     const { cnSubstrings, enWords } = extractTokensCNEN(userInput);
     const ranges = [];
 
-    // 中文：直接查找
     for (const sub of cnSubstrings) {
       if (!sub) continue;
       let idx = text.indexOf(sub);
@@ -240,7 +250,6 @@
       }
     }
 
-    // 英文：\bword\b（不区分大小写）
     for (const w of enWords) {
       if (!w) continue;
       const re = new RegExp(`\\b${escapeRegExp(w)}\\b`, 'gi');
@@ -252,7 +261,6 @@
 
     if (!ranges.length) return escapeHTML(text);
 
-    // 合并区间
     ranges.sort((a,b) => a[0]-b[0] || a[1]-b[1]);
     const merged = [];
     let cur = ranges[0];
@@ -263,7 +271,6 @@
     }
     merged.push(cur);
 
-    // 组装
     let out = '', last = 0;
     for (const [s,e] of merged){
       out += escapeHTML(text.slice(last, s));
@@ -323,7 +330,7 @@
     return new Intl.NumberFormat('en-US', { style:'currency', currency:'USD' }).format(num);
   }
 
-  // Render（按“是否查看支付状态”决定是否展示该列；姓名列高亮）
+  // Render：主行（序号/到货/可选支付/姓名） + 详情行（接龙内容/金额，合并整行）
   function renderResults(rows, key){
     countBadge.textContent = rows.length;
     listDiv.innerHTML = '';
@@ -344,43 +351,85 @@
           <th style="width:120px;">到货状态</th>
           ${showPayStatus ? '<th style="width:120px;">支付状态</th>' : ''}
           <th>客户姓名</th>
-          <th style="width:200px;">接龙内容</th>
-          <th style="width:140px;">应付金额（USD）</th>
         </tr>
       </thead>`;
     const tb = document.createElement('tbody');
 
     rows.forEach((r, i) => {
+      // 主行
       const tr = document.createElement('tr');
-
       const cell = (txt) => { const td = document.createElement('td'); td.textContent = txt; tr.appendChild(td); };
       const cellHTML = (html) => { const td = document.createElement('td'); td.innerHTML = html; tr.appendChild(td); };
 
       cell(i+1);
       cell(r.a);
-      if (showPayStatus) cell(r.b === '' ? '未支付' : r.b); // 再保险
+      if (showPayStatus) cell(r.b === '' ? '未支付' : r.b);
       cellHTML(r.dHTML);
-      cell(r.e);
-      cell(r.f);
-
       tb.appendChild(tr);
+
+      // 详情行（E, F）
+      const tr2 = document.createElement('tr');
+      tr2.className = 'detail-row';
+      const td = document.createElement('td');
+
+      // 计算需要合并的列数
+      const colSpan = showPayStatus ? 4 : 3;
+      td.colSpan = colSpan;
+
+      const wrap = document.createElement('div');
+      wrap.className = 'detail-meta';
+      const eDiv = document.createElement('div');
+      const fDiv = document.createElement('div');
+      eDiv.innerHTML = `<b>接龙内容：</b>${escapeHTML(String(r.e ?? ''))}`;
+      fDiv.innerHTML = `<b>应付金额（USD）：</b>${escapeHTML(String(r.f ?? ''))}`;
+      wrap.appendChild(eDiv);
+      wrap.appendChild(fDiv);
+
+      td.appendChild(wrap);
+      tr2.appendChild(td);
+      tb.appendChild(tr2);
     });
+
     table.appendChild(tb);
     listDiv.appendChild(table);
     copyBtn.disabled = false;
   }
 
-  // 复制 TSV（随“支付状态”显隐调整）
+  // 复制 TSV（包含 E、F 列）
   async function copyResults(){
     const showPayStatus = showPayStatusBox.checked;
     const header = ['序号','到货状态'];
     if (showPayStatus) header.push('支付状态');
     header.push('客户姓名','接龙内容','应付金额（USD）');
 
-    const rows = [...document.querySelectorAll('#list tbody tr')].map(tr =>
-      [...tr.children].map(td => td.textContent).join('\t')
-    );
-    if (!rows.length) return;
+    // 从内部数据再生成，而不是从 DOM 抽取（避免丢失换行结构）
+    const rows = [];
+    const key = (nameInput.value || "").trim();
+    // 重跑一次以得到同样的结果集（也可缓存 renderResults 的 rows）
+    const res = [];
+    for (const [_, aoa] of sheetDataMap) {
+      for (let r = 0; r < aoa.length; r++) {
+        const row = aoa[r]; if (!row) continue;
+        const dVal = String((row[3] ?? '')).trim();
+        if (!dVal && r === 0) continue;
+        if (matchByRule(key, dVal)) {
+          const aRaw = (row[0] ?? '');
+          const aDisplay = String(aRaw).trim() === '' ? '暂未到货' : String(aRaw).trim();
+          const bRaw = (row[1] ?? '');
+          const bDisplay = String(bRaw).trim() === '' ? '未支付' : String(bRaw).trim();
+          const e = row[4] ?? '';
+          const f = formatUSD(row[5]);
+          res.push({ a:aDisplay, b:bDisplay, d:dVal, e, f });
+        }
+      }
+    }
+    res.forEach((r, i) => {
+      const row = [i+1, r.a];
+      if (showPayStatus) row.push(r.b);
+      row.push(r.d, r.e, r.f);
+      rows.push(row.join('\t'));
+    });
+
     const text = header.join('\t') + '\n' + rows.join('\n');
     try {
       await navigator.clipboard.writeText(text);
@@ -405,6 +454,8 @@
 </script>
 </body>
 </html>
+
+
 
 
 
