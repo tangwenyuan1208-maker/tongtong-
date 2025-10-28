@@ -10,7 +10,6 @@
   body { margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Noto Sans SC",sans-serif; background:var(--bg); color:#222; }
   .container { max-width:980px; margin:32px auto; padding:0 16px; }
 
-  /* Banner inside container */
   .banner { text-align:center; margin-bottom:16px; }
   .banner img { max-width:100%; height:auto; border-radius:12px; box-shadow:0 4px 12px rgba(0,0,0,.08); object-fit:contain; }
 
@@ -25,18 +24,17 @@
   button:disabled { opacity:.6; cursor:not-allowed; }
   .badge { display:inline-block; padding:2px 8px; border-radius:999px; font-size:12px; background:#eee; }
 
-  /* Table adjustments (includes wider 到货状态) */
+  /* ✅ Table formatting */
   table { width:100%; border-collapse:collapse; margin-top:10px; table-layout:fixed; }
   th, td { text-align:left; padding:10px; border-bottom:1px solid #f0f0f0; word-wrap:break-word; }
   th { background:#fafafa; }
-  th:nth-child(3), td:nth-child(3) { width:120px; }  /* 到货状态 */
-  /* When 支付情况 is shown it will be the 4th column; give it some width too */
-  th:nth-child(4), td:nth-child(4) { width:120px; }
+  th:nth-child(2), td:nth-child(2) { width:120px; }  /* 到货状态 */
+  th:nth-child(4), td:nth-child(4) { width:200px; }  /* 接龙内容 */
+  th:nth-child(5), td:nth-child(5) { width:140px; }  /* 金额列 */
 
   .error { color:var(--danger); }
   .good { color:var(--ok); }
 </style>
-
 </head>
 <body>
 <div class="container">
@@ -48,20 +46,7 @@
 
   <div class="card">
     <h1>一一团近期接龙到货情况</h1>
-    <div class="muted" style="white-space: pre-line;">
-💌付款方式💌
-付款后，请把付款截图发给团长或者小助手。
-
-💟venmo💟
-cherrychen 向日葵🌻头像
-bayareaselect 绿植🍃头像
-
-🅿️paypal🅿️
-@tlyc 向日葵🌻头像
-
-💴支付宝 微信 💴
-人民币实时汇率私信团长付款。
-</div>
+    <div class="muted">如果到货状态是空白，说明暂时还没到货。</div>
     <div id="updateTime" class="muted" style="margin-top:6px;"></div>
   </div>
 
@@ -72,11 +57,6 @@ bayareaselect 绿植🍃头像
       <label class="row" style="gap:6px; font-weight:500;">
         <input type="checkbox" id="case" />
         区分大小写
-      </label>
-      <!-- ✅ New: 支付情况开关 -->
-      <label class="row" style="gap:6px; font-weight:500;">
-        <input type="checkbox" id="showPay" />
-        是否查看支付情况
       </label>
       <button id="searchBtn" disabled>搜索</button>
     </div>
@@ -93,9 +73,9 @@ bayareaselect 绿植🍃头像
     <div id="list" style="margin-top:8px;"></div>
   </div>
 
-  <!-- 团购到货进度 -->
+  <!-- 到货进度说明 -->
   <div class="card">
-    <h2 style="font-size:18px; margin-bottom:10px;">截至10月26日的团购到货进度：</h2>
+    <h2 style="font-size:18px; margin-bottom:10px;">10月26日的团购到货进度：</h2>
     <div style="white-space:pre-line; line-height:1.6;">
 1. rototobebe本周会大量到货80%。
 
@@ -122,15 +102,14 @@ bayareaselect 绿植🍃头像
 
 <script>
 (function(){
-  const excelPath = "./orders.xlsx";
-  const LOG_ENDPOINT = "https://script.google.com/macros/s/AKfycbyJxw1wJbYRZMGmy8vjZ41kTEmbpCZzk-e-DvyksbqFNPvhjiw8Mek_lpg8gRkodm7iug/exec";
+  const excelPath = "./orders.xlsx";  // Excel file
+  const LOG_ENDPOINT = "https://script.google.com/macros/s/AKfycbyJxw1wJbYRZMGmy8vjZ41kTEmbpCZzk-e-DvyksbqFNPvhjiw8Mek_lpg8gRkodm7iug/exec"; // <-- Replace with your Google Apps Script URL
 
   let workbook = null;
   const sheetDataMap = new Map();
   const $ = id => document.getElementById(id);
   const nameInput = $('name');
   const caseBox = $('case');
-  const showPayBox = $('showPay');      // ✅ new checkbox
   const searchBtn = $('searchBtn');
   const copyBtn = $('copyBtn');
   const listDiv = $('list');
@@ -138,7 +117,7 @@ bayareaselect 绿植🍃头像
   const countBadge = $('count');
   const updateTime = $('updateTime');
 
-  // Auto-load orders.xlsx
+  // Auto-load Excel
   (async function loadExcel(){
     resetUI();
     try {
@@ -177,47 +156,15 @@ bayareaselect 绿植🍃头像
     searchBtn.disabled = false;
   }
 
-  // Events
-  nameInput.addEventListener('keydown', e => {
-    if (e.key === 'Enter' && !searchBtn.disabled) doSearch();
-  });
-  searchBtn.addEventListener('click', doSearch);
-  copyBtn.addEventListener('click', copyResults);
-
-  // Fuzzy matching (two Chinese chars OR one English word)
-  function escapeRegExp(s){ return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
-  function tokenizeCNEN(str){
-    const cn = (str.match(/[\u4e00-\u9fff]/g) || []);
-    const en = (str.match(/[A-Za-z]+/g) || []).map(w => w.toLowerCase());
-    return { cn, en };
-  }
-  function fuzzyMatch(input, target, caseSensitive){
-    if (!input || !target) return false;
-    if (caseSensitive ? target === input : target.toLowerCase() === input.toLowerCase()) return true;
-
-    const { cn, en } = tokenizeCNEN(input);
-
-    const uniqueCN = [...new Set(cn)];
-    let cnHits = 0;
-    for (const ch of uniqueCN) {
-      if (ch && target.includes(ch)) {
-        cnHits++;
-        if (cnHits >= 2) return true;  // two Chinese chars
-      }
-    }
-
-    const t = caseSensitive ? target : target.toLowerCase();
-    for (const w of en) {
-      const re = new RegExp(`\\b${w.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\$&')}\\b`);
-      if (re.test(t)) return true; // one English word
-    }
-    return false;
-  }
-
-  // Log searches
+  // 🔹 Add search logger
   async function logSearch(name, matches) {
     try {
-      const payload = { name, matches, page: location.href, ua: navigator.userAgent };
+      const payload = {
+        name,
+        matches,
+        page: location.href,
+        ua: navigator.userAgent
+      };
       await fetch(LOG_ENDPOINT, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -227,6 +174,33 @@ bayareaselect 绿植🍃头像
     } catch (e) {
       console.warn('logSearch failed', e);
     }
+  }
+
+  // Events
+  nameInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !searchBtn.disabled) doSearch();
+  });
+  searchBtn.addEventListener('click', doSearch);
+  copyBtn.addEventListener('click', copyResults);
+
+  // Fuzzy matching helpers
+  function escapeRegExp(s){ return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+  function tokenizeCNEN(str){
+    const cn = (str.match(/[\u4e00-\u9fff]/g) || []);
+    const en = (str.match(/[A-Za-z]+/g) || []).map(w => w.toLowerCase());
+    return { cn, en };
+  }
+  function fuzzyMatch(input, target, caseSensitive){
+    if (!input || !target) return false;
+    if (caseSensitive ? target === input : target.toLowerCase() === input.toLowerCase()) return true;
+    const { cn, en } = tokenizeCNEN(input);
+    for (const ch of cn) if (target.includes(ch)) return true;
+    const t = caseSensitive ? target : target.toLowerCase();
+    for (const w of en) {
+      const re = new RegExp(`\\b${escapeRegExp(w)}\\b`);
+      if (re.test(t)) return true;
+    }
+    return false;
   }
 
   // Search
@@ -243,20 +217,16 @@ bayareaselect 绿植🍃头像
         const dVal = String((row[3] ?? '')).trim();
         if (!dVal && r === 0) continue;
         if (fuzzyMatch(key, dVal, caseSensitive)) {
-          // A: 到货状态（空 → 暂未到货）
           const aRaw = (row[0] ?? '');
           const aDisplay = String(aRaw).trim() === '' ? '暂未到货' : String(aRaw).trim();
-          // B: 支付情况（空 → 没支付）
-          const bRaw = (row[1] ?? '');
-          const bDisplay = String(bRaw).trim() === '' ? '没支付' : String(bRaw).trim();
-          // E/F
           const e = row[4] ?? '';
           const f = formatUSD(row[5]);
-          results.push({ sheet, a: aDisplay, b: bDisplay, d: dVal, e, f });
+          results.push({ a: aDisplay, d: dVal, e, f });
         }
       }
     }
-    logSearch(key, results.length);
+
+    logSearch(key, results.length);  // 🔔 log the search
     renderResults(results, key);
   }
 
@@ -271,6 +241,7 @@ bayareaselect 绿植🍃头像
     return new Intl.NumberFormat('en-US', { style:'currency', currency:'USD' }).format(num);
   }
 
+  // ✅ Removed “提货方式” column here
   function renderResults(rows, key){
     countBadge.textContent = rows.length;
     listDiv.innerHTML = '';
@@ -281,51 +252,35 @@ bayareaselect 绿植🍃头像
     }
     setStatus(`找到 ${rows.length} 条记录。`);
 
-    const showPay = showPayBox.checked;  // ✅ whether to show Column B
-
     const table = document.createElement('table');
-    // Build header based on showPay
     table.innerHTML = `
       <thead>
         <tr>
           <th>序号</th>
-          <th>提货方式</th>
           <th>到货状态</th>
-          ${showPay ? '<th>支付情况</th>' : ''}
           <th>客户姓名</th>
           <th>接龙内容</th>
           <th>应付金额（USD）</th>
         </tr>
       </thead>`;
     const tb = document.createElement('tbody');
-
     rows.forEach((r, i) => {
       const tr = document.createElement('tr');
-      const cells = [i+1, r.sheet, r.a];
-      if (showPay) cells.push(r.b);      // ✅ include B when checked
-      cells.push(r.d, r.e, r.f);
-      cells.forEach(txt => {
+      [i+1, r.a, r.d, r.e, r.f].forEach(txt => {
         const td = document.createElement('td'); td.textContent = txt; tr.appendChild(td);
       });
       tb.appendChild(tr);
     });
-
     table.appendChild(tb);
     listDiv.appendChild(table);
     copyBtn.disabled = false;
   }
 
   async function copyResults(){
-    const showPay = showPayBox.checked; // ✅ keep export consistent with UI
-    const headers = ['序号','提货方式','到货状态'];
-    if (showPay) headers.push('支付情况');
-    headers.push('客户姓名','接龙内容','应付金额（USD）');
-
     const rows = [...document.querySelectorAll('#list tbody tr')]
       .map(tr => [...tr.children].map(td => td.textContent).join('\t'));
     if (!rows.length) return;
-
-    const text = headers.join('\t') + '\n' + rows.join('\n');
+    const text = ['序号','到货状态','客户姓名','接龙内容','应付金额（USD）'].join('\t') + '\n' + rows.join('\n');
     try {
       await navigator.clipboard.writeText(text);
       setStatus("结果已复制到剪贴板。", false, true);
@@ -349,6 +304,8 @@ bayareaselect 绿植🍃头像
 </script>
 </body>
 </html>
+
+
 
 
 
