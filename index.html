@@ -175,23 +175,45 @@ bayareaselect 绿植🍃头像
 
   // Fuzzy matching
   function escapeRegExp(s){ return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
-  function tokenizeCNEN(str){
-    const cn = (str.match(/[\u4e00-\u9fff]/g) || []);
-    const en = (str.match(/[A-Za-z]+/g) || []).map(w => w.toLowerCase());
-    return { cn, en };
+ function tokenizeCNEN(str){
+  // Chinese: individual CJK chars; English: words [A-Za-z]+
+  const cn = (str.match(/[\u4e00-\u9fff]/g) || []);
+  const en = (str.match(/[A-Za-z]+/g) || []).map(w => w.toLowerCase());
+  return { cn, en };
+}
+function fuzzyMatch(input, target, caseSensitive){
+  if (!input || !target) return false;
+
+  // Exact match still wins
+  if (caseSensitive) {
+    if (target === input) return true;
+  } else {
+    if (target.toLowerCase() === input.toLowerCase()) return true;
   }
-  function fuzzyMatch(input, target, caseSensitive){
-    if (!input || !target) return false;
-    if (caseSensitive ? target === input : target.toLowerCase() === input.toLowerCase()) return true;
-    const { cn, en } = tokenizeCNEN(input);
-    for (const ch of cn) if (target.includes(ch)) return true;
-    const t = caseSensitive ? target : target.toLowerCase();
-    for (const w of en) {
-      const re = new RegExp(`\\b${escapeRegExp(w)}\\b`);
-      if (re.test(t)) return true;
+
+  // Two-Chinese-char OR one-English-word logic
+  const { cn, en } = tokenizeCNEN(input);
+
+  // --- Chinese: require >= 2 distinct chars to appear anywhere in target ---
+  const uniqueCN = [...new Set(cn)];
+  let cnHits = 0;
+  for (const ch of uniqueCN) {
+    if (ch && target.includes(ch)) {
+      cnHits++;
+      if (cnHits >= 2) return true;  // ✅ two Chinese characters matched
     }
-    return false;
   }
+
+  // --- English: any one whole word match (case-insensitive unless caseSensitive) ---
+  const t = caseSensitive ? target : target.toLowerCase();
+  for (const w of en) {
+    const word = caseSensitive ? w : w.toLowerCase();
+    const re = new RegExp(`\\b${w.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\$&')}\\b`);
+    if (re.test(t)) return true;     // ✅ one English word matched
+  }
+
+  return false;
+}
 
 
   // ✅ ADD THIS NEW FUNCTION HERE
@@ -315,6 +337,7 @@ bayareaselect 绿植🍃头像
 </script>
 </body>
 </html>
+
 
 
 
