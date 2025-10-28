@@ -6,7 +6,7 @@
 <title>一一团近期接龙到货情况</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
-  :root { --bg:#f6f7fb; --card:#fff; --muted:#666; --accent:#165DFF; --ok:#19be6b; --danger:#fa5151; }
+  :root { --bg:#f6f7fb; --card:#fff; --muted:#666; --accent:#165DFF; --ok:#19be6b; --danger:#fa5151; --hl:#fff2a8; }
   body { margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Noto Sans SC",sans-serif; background:var(--bg); color:#222; }
   .container { max-width:980px; margin:32px auto; padding:0 16px; }
 
@@ -28,6 +28,10 @@
   table { width:100%; border-collapse:collapse; margin-top:10px; table-layout:fixed; }
   th, td { text-align:left; padding:10px; border-bottom:1px solid #f0f0f0; word-wrap:break-word; }
   th { background:#fafafa; }
+
+  /* highlight */
+  mark { background: var(--hl); padding:0 .15em; border-radius:.2em; }
+
   .error { color:var(--danger); }
   .good { color:var(--ok); }
 </style>
@@ -50,10 +54,6 @@
     <div class="row" style="margin-bottom:10px;">
       <label>请输入您的接龙名字：</label>
       <input type="text" id="name" placeholder="输入姓名…" />
-      <label class="row" style="gap:6px; font-weight:500;">
-        <input type="checkbox" id="case" />
-        区分大小写
-      </label>
       <label class="row" style="gap:6px; font-weight:500;">
         <input type="checkbox" id="showPayStatus" />
         是否查看支付状态
@@ -103,13 +103,12 @@
 <script>
 (function(){
   const excelPath = "./orders.xlsx";  // Excel file
-  const LOG_ENDPOINT = "https://script.google.com/macros/s/AKfycbyJxw1wJbYRZMGmy8vjZ41kTEmbpCZzk-e-DvyksbqFNPvhjiw8Mek_lpg8gRkodm7iug/exec"; // <-- Replace with your Apps Script URL
+  const LOG_ENDPOINT = "https://script.google.com/macros/s/AKfycbyJxw1wJbYRZMGmy8vjZ41kTEmbpCZzk-e-DvyksbqFNPvhjiw8Mek_lpg8gRkodm7iug/exec"; // 可选：Google Apps Script 日志端点
 
   let workbook = null;
   const sheetDataMap = new Map();
   const $ = id => document.getElementById(id);
   const nameInput = $('name');
-  const caseBox = $('case');
   const showPayStatusBox = $('showPayStatus');
   const searchBtn = $('searchBtn');
   const copyBtn = $('copyBtn');
@@ -157,8 +156,9 @@
     searchBtn.disabled = false;
   }
 
-  // Search logger
+  // Search logger (optional)
   async function logSearch(name, matches) {
+    if (!LOG_ENDPOINT || LOG_ENDPOINT.includes('PASTE_YOUR_APPS_SCRIPT_URL_HERE')) return;
     try {
       const payload = { name, matches, page: location.href, ua: navigator.userAgent };
       await fetch(LOG_ENDPOINT, {
@@ -177,30 +177,109 @@
     if (e.key === 'Enter' && !searchBtn.disabled) doSearch();
   });
   searchBtn.addEventListener('click', doSearch);
-  showPayStatusBox.addEventListener('change', () => {
-    // re-render with/without 支付状态 column based on current results
-    doSearch();
-  });
+  showPayStatusBox.addEventListener('change', () => { doSearch(); });
   copyBtn.addEventListener('click', copyResults);
 
-  // Fuzzy matching helpers
-  function escapeRegExp(s){ return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
-  function tokenizeCNEN(str){
-    const cn = (str.match(/[\u4e00-\u9fff]/g) || []);
-    const en = (str.match(/[A-Za-z]+/g) || []).map(w => w.toLowerCase());
-    return { cn, en };
+  /* =========================
+     Matching helpers & highlight
+     规则：
+     - 中文：至少两个连续汉字匹配
+     - 英文：至少一个完整英文单词匹配（不区分大小写）
+     - 特殊符号忽略
+     ========================= */
+
+  function extractTokensCNEN(input){
+    const cnSeq = (input.match(/[\u4e00-\u9fff]+/g) || []);
+    const cnSubstrings = [];
+    for (const seq of cnSeq) {
+      if (seq.length >= 2) {
+        for (let L = 2; L <= seq.length; L++) {
+          for (let i = 0; i + L <= seq.length; i++) {
+            cnSubstrings.push(seq.slice(i, i+L));
+          }
+        }
+      }
+    }
+    const enWords = (input.match(/[A-Za-z]+/g) || []).map(w => w.toLowerCase());
+    return { cnSubstrings, enWords };
   }
-  function fuzzyMatch(input, target, caseSensitive){
-    if (!input || !target) return false;
-    if (caseSensitive ? target === input : target.toLowerCase() === input.toLowerCase()) return true;
-    const { cn, en } = tokenizeCNEN(input);
-    for (const ch of cn) if (target.includes(ch)) return true;
-    const t = caseSensitive ? target : target.toLowerCase();
-    for (const w of en) {
-      const re = new RegExp(`\\b${escapeRegExp(w)}\\b`);
-      if (re.test(t)) return true;
+
+  function matchByRule(userInput, targetText){
+    if (!userInput || !targetText) return false;
+    const t = String(targetText);
+    const tl = t.toLowerCase();
+    const { cnSubstrings, enWords } = extractTokensCNEN(userInput);
+
+    for (const sub of cnSubstrings) {
+      if (sub && t.includes(sub)) return true;
+    }
+    for (const w of enWords) {
+      if (!w) continue;
+      const re = new RegExp(`\\b${escapeRegExp(w)}\\b`, 'i');
+      if (re.test(tl)) return true;
     }
     return false;
+  }
+
+  function escapeRegExp(s){ return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+  function escapeHTML(s){ return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+  // 返回带 <mark> 的 HTML，用于高亮“客户姓名”列
+  function highlightMatches(userInput, targetText){
+    const text = String(targetText || '');
+    if (!userInput || !text) return escapeHTML(text);
+
+    const lower = text.toLowerCase();
+    const { cnSubstrings, enWords } = extractTokensCNEN(userInput);
+
+    // 收集所有命中区间 [start, end)
+    const ranges = [];
+
+    // 中文：区分大小写直接找子串
+    for (const sub of cnSubstrings) {
+      if (!sub) continue;
+      let idx = text.indexOf(sub);
+      while (idx !== -1) {
+        ranges.push([idx, idx + sub.length]);
+        idx = text.indexOf(sub, idx + 1);
+      }
+    }
+
+    // 英文：\bword\b 不区分大小写
+    for (const w of enWords) {
+      if (!w) continue;
+      const re = new RegExp(`\\b${escapeRegExp(w)}\\b`, 'gi');
+      let m;
+      while ((m = re.exec(text)) !== null) {
+        ranges.push([m.index, m.index + m[0].length]);
+      }
+    }
+
+    if (!ranges.length) return escapeHTML(text);
+
+    // 合并重叠区间
+    ranges.sort((a,b) => a[0]-b[0] || a[1]-b[1]);
+    const merged = [];
+    let cur = ranges[0];
+    for (let i=1; i<ranges.length; i++){
+      const r = ranges[i];
+      if (r[0] <= cur[1]) {
+        cur[1] = Math.max(cur[1], r[1]);
+      } else {
+        merged.push(cur); cur = r;
+      }
+    }
+    merged.push(cur);
+
+    // 组装 HTML
+    let out = '', last = 0;
+    for (const [s,e] of merged){
+      out += escapeHTML(text.slice(last, s));
+      out += '<mark>' + escapeHTML(text.slice(s, e)) + '</mark>';
+      last = e;
+    }
+    out += escapeHTML(text.slice(last));
+    return out;
   }
 
   // Search
@@ -208,16 +287,15 @@
     if (sheetDataMap.size === 0) { setStatus("Excel 文件未加载。", true); return; }
     const key = (nameInput.value || "").trim();
     if (!key) { setStatus("请输入您的接龙名字。", true); return; }
-    const caseSensitive = caseBox.checked;
-    const results = [];
 
-    // Columns: A=0(到货状态), B=1(支付状态), D=3(客户姓名), E=4(接龙内容), F=5(金额)
+    const results = [];
+    // 列映射：A=0(到货状态), B=1(支付状态), D=3(客户姓名), E=4(接龙内容), F=5(金额)
     for (const [_, aoa] of sheetDataMap) {
       for (let r = 0; r < aoa.length; r++) {
         const row = aoa[r]; if (!row) continue;
         const dVal = String((row[3] ?? '')).trim();
-        if (!dVal && r === 0) continue; // likely header
-        if (fuzzyMatch(key, dVal, caseSensitive)) {
+        if (!dVal && r === 0) continue; // 表头
+        if (matchByRule(key, dVal)) {
           const aRaw = (row[0] ?? '');
           const aDisplay = String(aRaw).trim() === '' ? '暂未到货' : String(aRaw).trim();
 
@@ -226,7 +304,15 @@
 
           const e = row[4] ?? '';
           const f = formatUSD(row[5]);
-          results.push({ a: aDisplay, b: bDisplay, d: dVal, e, f });
+
+          // 保存原始姓名与高亮版本
+          results.push({
+            a: aDisplay,
+            b: bDisplay,
+            d: dVal,
+            dHTML: highlightMatches(key, dVal),
+            e, f
+          });
         }
       }
     }
@@ -246,7 +332,7 @@
     return new Intl.NumberFormat('en-US', { style:'currency', currency:'USD' }).format(num);
   }
 
-  // Render (conditionally include 支付状态)
+  // Render（根据“是否查看支付状态”决定是否展示该列；姓名列用 dHTML 高亮）
   function renderResults(rows, key){
     countBadge.textContent = rows.length;
     listDiv.innerHTML = '';
@@ -275,12 +361,27 @@
 
     rows.forEach((r, i) => {
       const tr = document.createElement('tr');
-      const cells = [i+1, r.a];
-      if (showPayStatus) cells.push(r.b);
-      cells.push(r.d, r.e, r.f);
-      cells.forEach(txt => {
-        const td = document.createElement('td'); td.textContent = txt; tr.appendChild(td);
-      });
+
+      // 普通单元格（非姓名）
+      const pushCell = (txt) => {
+        const td = document.createElement('td');
+        td.textContent = txt;
+        tr.appendChild(td);
+      };
+      // 姓名单元格（带高亮 HTML）
+      const pushNameCell = (html) => {
+        const td = document.createElement('td');
+        td.innerHTML = html;  // 安全：我们已对文本进行 escape，再包裹 mark
+        tr.appendChild(td);
+      };
+
+      pushCell(i+1);
+      pushCell(r.a);
+      if (showPayStatus) pushCell(r.b);
+      pushNameCell(r.dHTML);
+      pushCell(r.e);
+      pushCell(r.f);
+
       tb.appendChild(tr);
     });
     table.appendChild(tb);
@@ -288,7 +389,7 @@
     copyBtn.disabled = false;
   }
 
-  // Copy TSV (adapts to 支付状态 column)
+  // 复制 TSV（不包含 <mark>，因为我们取的是 textContent）
   async function copyResults(){
     const showPayStatus = showPayStatusBox.checked;
     const header = ['序号','到货状态'];
@@ -323,6 +424,8 @@
 </script>
 </body>
 </html>
+
+
 
 
 
