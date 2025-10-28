@@ -10,7 +10,7 @@
   body { margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Noto Sans SC",sans-serif; background:var(--bg); color:#222; }
   .container { max-width:980px; margin:32px auto; padding:0 16px; }
 
-  /* ✅ Banner inside container */
+  /* Banner inside container */
   .banner { text-align:center; margin-bottom:16px; }
   .banner img { max-width:100%; height:auto; border-radius:12px; box-shadow:0 4px 12px rgba(0,0,0,.08); object-fit:contain; }
 
@@ -24,9 +24,15 @@
   button.secondary { background:#333; }
   button:disabled { opacity:.6; cursor:not-allowed; }
   .badge { display:inline-block; padding:2px 8px; border-radius:999px; font-size:12px; background:#eee; }
-  table { width:100%; border-collapse:collapse; margin-top:10px; }
-  th, td { text-align:left; padding:10px; border-bottom:1px solid #f0f0f0; }
+
+  /* Table adjustments (includes wider 到货状态) */
+  table { width:100%; border-collapse:collapse; margin-top:10px; table-layout:fixed; }
+  th, td { text-align:left; padding:10px; border-bottom:1px solid #f0f0f0; word-wrap:break-word; }
   th { background:#fafafa; }
+  th:nth-child(3), td:nth-child(3) { width:120px; }  /* 到货状态 */
+  /* When 支付情况 is shown it will be the 4th column; give it some width too */
+  th:nth-child(4), td:nth-child(4) { width:120px; }
+
   .error { color:var(--danger); }
   .good { color:var(--ok); }
 </style>
@@ -66,6 +72,11 @@ bayareaselect 绿植🍃头像
       <label class="row" style="gap:6px; font-weight:500;">
         <input type="checkbox" id="case" />
         区分大小写
+      </label>
+      <!-- ✅ New: 支付情况开关 -->
+      <label class="row" style="gap:6px; font-weight:500;">
+        <input type="checkbox" id="showPay" />
+        是否查看支付情况
       </label>
       <button id="searchBtn" disabled>搜索</button>
     </div>
@@ -112,14 +123,15 @@ bayareaselect 绿植🍃头像
 
 <script>
 (function(){
-  const excelPath = "./orders.xlsx";  // ✅ uses your renamed Excel file
-  const LOG_ENDPOINT = "https://script.google.com/macros/s/AKfycbyJxw1wJbYRZMGmy8vjZ41kTEmbpCZzk-e-DvyksbqFNPvhjiw8Mek_lpg8gRkodm7iug/exec"; // <-- paste your Apps Script Web App URL here
+  const excelPath = "./orders.xlsx";
+  const LOG_ENDPOINT = "https://script.google.com/macros/s/AKfycbyJxw1wJbYRZMGmy8vjZ41kTEmbpCZzk-e-DvyksbqFNPvhjiw8Mek_lpg8gRkodm7iug/exec";
 
   let workbook = null;
   const sheetDataMap = new Map();
   const $ = id => document.getElementById(id);
   const nameInput = $('name');
   const caseBox = $('case');
+  const showPayBox = $('showPay');      // ✅ new checkbox
   const searchBtn = $('searchBtn');
   const copyBtn = $('copyBtn');
   const listDiv = $('list');
@@ -173,58 +185,40 @@ bayareaselect 绿植🍃头像
   searchBtn.addEventListener('click', doSearch);
   copyBtn.addEventListener('click', copyResults);
 
-  // Fuzzy matching
+  // Fuzzy matching (two Chinese chars OR one English word)
   function escapeRegExp(s){ return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
- function tokenizeCNEN(str){
-  // Chinese: individual CJK chars; English: words [A-Za-z]+
-  const cn = (str.match(/[\u4e00-\u9fff]/g) || []);
-  const en = (str.match(/[A-Za-z]+/g) || []).map(w => w.toLowerCase());
-  return { cn, en };
-}
-function fuzzyMatch(input, target, caseSensitive){
-  if (!input || !target) return false;
-
-  // Exact match still wins
-  if (caseSensitive) {
-    if (target === input) return true;
-  } else {
-    if (target.toLowerCase() === input.toLowerCase()) return true;
+  function tokenizeCNEN(str){
+    const cn = (str.match(/[\u4e00-\u9fff]/g) || []);
+    const en = (str.match(/[A-Za-z]+/g) || []).map(w => w.toLowerCase());
+    return { cn, en };
   }
+  function fuzzyMatch(input, target, caseSensitive){
+    if (!input || !target) return false;
+    if (caseSensitive ? target === input : target.toLowerCase() === input.toLowerCase()) return true;
 
-  // Two-Chinese-char OR one-English-word logic
-  const { cn, en } = tokenizeCNEN(input);
+    const { cn, en } = tokenizeCNEN(input);
 
-  // --- Chinese: require >= 2 distinct chars to appear anywhere in target ---
-  const uniqueCN = [...new Set(cn)];
-  let cnHits = 0;
-  for (const ch of uniqueCN) {
-    if (ch && target.includes(ch)) {
-      cnHits++;
-      if (cnHits >= 2) return true;  // ✅ two Chinese characters matched
+    const uniqueCN = [...new Set(cn)];
+    let cnHits = 0;
+    for (const ch of uniqueCN) {
+      if (ch && target.includes(ch)) {
+        cnHits++;
+        if (cnHits >= 2) return true;  // two Chinese chars
+      }
     }
+
+    const t = caseSensitive ? target : target.toLowerCase();
+    for (const w of en) {
+      const re = new RegExp(`\\b${w.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\$&')}\\b`);
+      if (re.test(t)) return true; // one English word
+    }
+    return false;
   }
 
-  // --- English: any one whole word match (case-insensitive unless caseSensitive) ---
-  const t = caseSensitive ? target : target.toLowerCase();
-  for (const w of en) {
-    const word = caseSensitive ? w : w.toLowerCase();
-    const re = new RegExp(`\\b${w.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\$&')}\\b`);
-    if (re.test(t)) return true;     // ✅ one English word matched
-  }
-
-  return false;
-}
-
-
-  // ✅ ADD THIS NEW FUNCTION HERE
+  // Log searches
   async function logSearch(name, matches) {
     try {
-      const payload = {
-        name,
-        matches,
-        page: location.href,
-        ua: navigator.userAgent
-      };
+      const payload = { name, matches, page: location.href, ua: navigator.userAgent };
       await fetch(LOG_ENDPOINT, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -236,7 +230,6 @@ function fuzzyMatch(input, target, caseSensitive){
     }
   }
 
-  
   // Search
   function doSearch(){
     if (sheetDataMap.size === 0) { setStatus("Excel 文件未加载。", true); return; }
@@ -251,15 +244,20 @@ function fuzzyMatch(input, target, caseSensitive){
         const dVal = String((row[3] ?? '')).trim();
         if (!dVal && r === 0) continue;
         if (fuzzyMatch(key, dVal, caseSensitive)) {
+          // A: 到货状态（空 → 暂未到货）
           const aRaw = (row[0] ?? '');
           const aDisplay = String(aRaw).trim() === '' ? '暂未到货' : String(aRaw).trim();
+          // B: 支付情况（空 → 没支付）
+          const bRaw = (row[1] ?? '');
+          const bDisplay = String(bRaw).trim() === '' ? '没支付' : String(bRaw).trim();
+          // E/F
           const e = row[4] ?? '';
           const f = formatUSD(row[5]);
-          results.push({ sheet, a: aDisplay, d: dVal, e, f });
+          results.push({ sheet, a: aDisplay, b: bDisplay, d: dVal, e, f });
         }
       }
     }
-        logSearch(key, results.length);
+    logSearch(key, results.length);
     renderResults(results, key);
   }
 
@@ -284,36 +282,51 @@ function fuzzyMatch(input, target, caseSensitive){
     }
     setStatus(`找到 ${rows.length} 条记录。`);
 
+    const showPay = showPayBox.checked;  // ✅ whether to show Column B
+
     const table = document.createElement('table');
+    // Build header based on showPay
     table.innerHTML = `
       <thead>
         <tr>
           <th>序号</th>
           <th>提货方式</th>
           <th>到货状态</th>
+          ${showPay ? '<th>支付情况</th>' : ''}
           <th>客户姓名</th>
           <th>接龙内容</th>
           <th>应付金额（USD）</th>
         </tr>
       </thead>`;
     const tb = document.createElement('tbody');
+
     rows.forEach((r, i) => {
       const tr = document.createElement('tr');
-      [i+1, r.sheet, r.a, r.d, r.e, r.f].forEach(txt => {
+      const cells = [i+1, r.sheet, r.a];
+      if (showPay) cells.push(r.b);      // ✅ include B when checked
+      cells.push(r.d, r.e, r.f);
+      cells.forEach(txt => {
         const td = document.createElement('td'); td.textContent = txt; tr.appendChild(td);
       });
       tb.appendChild(tr);
     });
+
     table.appendChild(tb);
     listDiv.appendChild(table);
     copyBtn.disabled = false;
   }
 
   async function copyResults(){
+    const showPay = showPayBox.checked; // ✅ keep export consistent with UI
+    const headers = ['序号','提货方式','到货状态'];
+    if (showPay) headers.push('支付情况');
+    headers.push('客户姓名','接龙内容','应付金额（USD）');
+
     const rows = [...document.querySelectorAll('#list tbody tr')]
       .map(tr => [...tr.children].map(td => td.textContent).join('\t'));
     if (!rows.length) return;
-    const text = ['序号','提货方式','到货状态','客户姓名','接龙内容','应付金额（USD）'].join('\t') + '\n' + rows.join('\n');
+
+    const text = headers.join('\t') + '\n' + rows.join('\n');
     try {
       await navigator.clipboard.writeText(text);
       setStatus("结果已复制到剪贴板。", false, true);
@@ -337,6 +350,8 @@ function fuzzyMatch(input, target, caseSensitive){
 </script>
 </body>
 </html>
+
+
 
 
 
