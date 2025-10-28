@@ -24,14 +24,10 @@
   button:disabled { opacity:.6; cursor:not-allowed; }
   .badge { display:inline-block; padding:2px 8px; border-radius:999px; font-size:12px; background:#eee; }
 
-  /* ✅ Table formatting */
+  /* Table */
   table { width:100%; border-collapse:collapse; margin-top:10px; table-layout:fixed; }
   th, td { text-align:left; padding:10px; border-bottom:1px solid #f0f0f0; word-wrap:break-word; }
   th { background:#fafafa; }
-  th:nth-child(2), td:nth-child(2) { width:120px; }  /* 到货状态 */
-  th:nth-child(4), td:nth-child(4) { width:200px; }  /* 接龙内容 */
-  th:nth-child(5), td:nth-child(5) { width:140px; }  /* 金额列 */
-
   .error { color:var(--danger); }
   .good { color:var(--ok); }
 </style>
@@ -57,6 +53,10 @@
       <label class="row" style="gap:6px; font-weight:500;">
         <input type="checkbox" id="case" />
         区分大小写
+      </label>
+      <label class="row" style="gap:6px; font-weight:500;">
+        <input type="checkbox" id="showPayStatus" />
+        是否查看支付状态
       </label>
       <button id="searchBtn" disabled>搜索</button>
     </div>
@@ -103,13 +103,14 @@
 <script>
 (function(){
   const excelPath = "./orders.xlsx";  // Excel file
-  const LOG_ENDPOINT = "https://script.google.com/macros/s/AKfycbyJxw1wJbYRZMGmy8vjZ41kTEmbpCZzk-e-DvyksbqFNPvhjiw8Mek_lpg8gRkodm7iug/exec"; // <-- Replace with your Google Apps Script URL
+  const LOG_ENDPOINT = "https://script.google.com/macros/s/AKfycbyJxw1wJbYRZMGmy8vjZ41kTEmbpCZzk-e-DvyksbqFNPvhjiw8Mek_lpg8gRkodm7iug/exec"; // <-- Replace with your Apps Script URL
 
   let workbook = null;
   const sheetDataMap = new Map();
   const $ = id => document.getElementById(id);
   const nameInput = $('name');
   const caseBox = $('case');
+  const showPayStatusBox = $('showPayStatus');
   const searchBtn = $('searchBtn');
   const copyBtn = $('copyBtn');
   const listDiv = $('list');
@@ -156,15 +157,10 @@
     searchBtn.disabled = false;
   }
 
-  // 🔹 Add search logger
+  // Search logger
   async function logSearch(name, matches) {
     try {
-      const payload = {
-        name,
-        matches,
-        page: location.href,
-        ua: navigator.userAgent
-      };
+      const payload = { name, matches, page: location.href, ua: navigator.userAgent };
       await fetch(LOG_ENDPOINT, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -181,6 +177,10 @@
     if (e.key === 'Enter' && !searchBtn.disabled) doSearch();
   });
   searchBtn.addEventListener('click', doSearch);
+  showPayStatusBox.addEventListener('change', () => {
+    // re-render with/without 支付状态 column based on current results
+    doSearch();
+  });
   copyBtn.addEventListener('click', copyResults);
 
   // Fuzzy matching helpers
@@ -211,22 +211,27 @@
     const caseSensitive = caseBox.checked;
     const results = [];
 
-    for (const [sheet, aoa] of sheetDataMap) {
+    // Columns: A=0(到货状态), B=1(支付状态), D=3(客户姓名), E=4(接龙内容), F=5(金额)
+    for (const [_, aoa] of sheetDataMap) {
       for (let r = 0; r < aoa.length; r++) {
         const row = aoa[r]; if (!row) continue;
         const dVal = String((row[3] ?? '')).trim();
-        if (!dVal && r === 0) continue;
+        if (!dVal && r === 0) continue; // likely header
         if (fuzzyMatch(key, dVal, caseSensitive)) {
           const aRaw = (row[0] ?? '');
           const aDisplay = String(aRaw).trim() === '' ? '暂未到货' : String(aRaw).trim();
+
+          const bRaw = (row[1] ?? '');
+          const bDisplay = String(bRaw).trim() === '' ? '未支付' : String(bRaw).trim();
+
           const e = row[4] ?? '';
           const f = formatUSD(row[5]);
-          results.push({ a: aDisplay, d: dVal, e, f });
+          results.push({ a: aDisplay, b: bDisplay, d: dVal, e, f });
         }
       }
     }
 
-    logSearch(key, results.length);  // 🔔 log the search
+    logSearch(key, results.length);
     renderResults(results, key);
   }
 
@@ -241,10 +246,12 @@
     return new Intl.NumberFormat('en-US', { style:'currency', currency:'USD' }).format(num);
   }
 
-  // ✅ Removed “提货方式” column here
+  // Render (conditionally include 支付状态)
   function renderResults(rows, key){
     countBadge.textContent = rows.length;
     listDiv.innerHTML = '';
+    const showPayStatus = showPayStatusBox.checked;
+
     if (!rows.length) {
       setStatus(`没有找到 "${key}" 的记录。`, true);
       copyBtn.disabled = true;
@@ -256,17 +263,22 @@
     table.innerHTML = `
       <thead>
         <tr>
-          <th>序号</th>
-          <th>到货状态</th>
+          <th style="width:64px;">序号</th>
+          <th style="width:120px;">到货状态</th>
+          ${showPayStatus ? '<th style="width:120px;">支付状态</th>' : ''}
           <th>客户姓名</th>
-          <th>接龙内容</th>
-          <th>应付金额（USD）</th>
+          <th style="width:200px;">接龙内容</th>
+          <th style="width:140px;">应付金额（USD）</th>
         </tr>
       </thead>`;
     const tb = document.createElement('tbody');
+
     rows.forEach((r, i) => {
       const tr = document.createElement('tr');
-      [i+1, r.a, r.d, r.e, r.f].forEach(txt => {
+      const cells = [i+1, r.a];
+      if (showPayStatus) cells.push(r.b);
+      cells.push(r.d, r.e, r.f);
+      cells.forEach(txt => {
         const td = document.createElement('td'); td.textContent = txt; tr.appendChild(td);
       });
       tb.appendChild(tr);
@@ -276,11 +288,18 @@
     copyBtn.disabled = false;
   }
 
+  // Copy TSV (adapts to 支付状态 column)
   async function copyResults(){
-    const rows = [...document.querySelectorAll('#list tbody tr')]
-      .map(tr => [...tr.children].map(td => td.textContent).join('\t'));
+    const showPayStatus = showPayStatusBox.checked;
+    const header = ['序号','到货状态'];
+    if (showPayStatus) header.push('支付状态');
+    header.push('客户姓名','接龙内容','应付金额（USD）');
+
+    const rows = [...document.querySelectorAll('#list tbody tr')].map(tr =>
+      [...tr.children].map(td => td.textContent).join('\t')
+    );
     if (!rows.length) return;
-    const text = ['序号','到货状态','客户姓名','接龙内容','应付金额（USD）'].join('\t') + '\n' + rows.join('\n');
+    const text = header.join('\t') + '\n' + rows.join('\n');
     try {
       await navigator.clipboard.writeText(text);
       setStatus("结果已复制到剪贴板。", false, true);
@@ -304,6 +323,8 @@
 </script>
 </body>
 </html>
+
+
 
 
 
