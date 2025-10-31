@@ -212,7 +212,8 @@ bayareaselect 绿植🍃头像
 
 <script>
 (function(){
-  const excelPath = "./orders.xlsx";  // Excel file
+  const excelPath = "./orders.xlsx";
+  const LOG_ENDPOINT = "https://script.google.com/macros/s/AKfycbyJxw1wJbYRZMGmy8vjZ41kTEmbpCZzk-e-DvyksbqFNPvhjiw8Mek_lpg8gRkodm7iug/exec";
 
   let workbook = null;
   const sheetDataMap = new Map();
@@ -226,7 +227,7 @@ bayareaselect 绿植🍃头像
   const countBadge = $('count');
   const updateTime = $('updateTime');
 
-  // JS error -> status
+  // error -> status
   window.addEventListener('error', (ev) => {
     try {
       const msg = (ev && ev.message) ? ev.message : String(ev);
@@ -592,6 +593,7 @@ bayareaselect 绿植🍃头像
 </script>
 </body>
 </html>
+
 
 
 
