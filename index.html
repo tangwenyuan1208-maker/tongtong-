@@ -3,143 +3,253 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>一一团近期接龙到货情况</title>
+<title>一一团近期接龙到货情况 · 万圣节版</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
 <style>
-  /* --- Pink Kawaii Top Banner --- */
-  .top-hero {
-    position: relative;
-    margin: 0 0 14px 0;
-    padding: 22px 14px;
-    text-align: center;
-    color: #7a3a55;
-    border-radius: 18px;
-    border: 1px solid var(--line);
-    box-shadow: var(--shadow);
-    background:
-      radial-gradient(circle at 8% 20%, #ffe6f2 0 120px, transparent 130px),
-      radial-gradient(circle at 92% 25%, #ffd9ea 0 120px, transparent 130px),
-      linear-gradient(180deg, #fff5fa, #ffeaf3);
-    overflow: hidden;
-  }
-  .top-hero::before, .top-hero::after {
-    content: "✿";
-    position: absolute;
-    font-size: 26px;
-    opacity: .25;
-    color: #ff66a1;
-  }
-  .top-hero::before { left: 12px; top: 8px; transform: rotate(-10deg); }
-  .top-hero::after  { right: 12px; bottom: 8px; transform: rotate(15deg); }
-  .top-hero h2 {
-    margin: 0;
-    font-size: 20px;
-    font-weight: 800;
-    letter-spacing: .5px;
-  }
-  .top-hero .sub {
-    margin-top: 6px;
-    font-size: 13.5px;
-    color: #8b6b7a;
-  }
-
-  /* === Kawaii Pink Theme === */
+  /* === Halloween Theme (Pumpkin Orange, Midnight Black, Candy Purple) === */
   .multiline { white-space: pre-line; }
 
-  :root {
-    --bg:#fff6fb;           /* very light pink */
-    --card:#ffffff;
-    --muted:#7a6d78;
-    --accent:#ff66a1;       /* primary pink */
-    --accent-2:#ff8bbb;     /* lighter pink */
-    --ok:#3cc88f;           /* mint ok */
-    --danger:#ff5d7a;       /* strawberry danger */
-    --hl:#ffe5f0;           /* blush highlight */
-    --line:#ffd6e6;
-    --shadow:0 10px 30px rgba(255,102,161,.12);
+  :root{
+    --bg: #0d0d0f;            /* night sky */
+    --bg-glow1: #191922;
+    --bg-glow2: #13111a;
+    --card: #121216;          /* dark card */
+    --muted: #b9b7c3;         /* soft gray */
+    --accent: #ff7a00;        /* pumpkin orange */
+    --accent-2:#ffa04d;       /* lighter orange */
+    --accent-3:#b56cff;       /* candy purple for accents */
+    --ok:#3ddc97;             /* mint green */
+    --danger:#ff4d6d;         /* spooky pink-red */
+    --hl:#2a1b00;             /* dark amber for highlight base */
+    --hl-glow:#ffad42;        /* glow color for highlight text */
+    --line:#2a2533;           /* subtle border */
+    --shadow: 0 10px 30px rgba(0,0,0,.35);
   }
 
-  body {
+  body{
     margin:0;
     font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Noto Sans SC",sans-serif;
-    color:#3a2c36;
+    color:#f2efe9;
     background:
-      radial-gradient(1200px 600px at 10% -10%, #fff0f7 10%, transparent 60%),
-      radial-gradient(1200px 600px at 110% 10%, #ffeef6 10%, transparent 60%),
-      var(--bg);
+      radial-gradient(1200px 600px at -10% -20%, #1c1626 5%, transparent 60%),
+      radial-gradient(1200px 600px at 120% -10%, #1a1424 5%, transparent 60%),
+      linear-gradient(180deg, var(--bg-glow1), var(--bg-glow2) 45%, var(--bg));
+    overflow-x: hidden; /* 避免幽灵超出造成横向滚动 */
   }
 
-  .container { max-width:980px; margin:32px auto; padding:0 16px; }
+  .container{ max-width:980px; margin:28px auto 40px; padding:0 16px; position:relative; z-index: 2; }
+
+  /* --- Halloween Top Banner --- */
+  .top-hero{
+    position:relative;
+    margin:0 0 16px 0;
+    padding:20px 16px 24px;
+    text-align:center;
+    color:#ffe7c2;
+    border-radius:18px;
+    border:1px solid #3a2a1a;
+    box-shadow: var(--shadow);
+    background:
+      radial-gradient(600px 200px at 10% 0%, #2b1f14 0, transparent 70%),
+      radial-gradient(600px 200px at 90% 0%, #2b1f14 0, transparent 70%),
+      linear-gradient(180deg, #2a1b12, #1a1210 70%, #120e0b);
+    overflow:hidden;
+  }
+  .top-hero::before, .top-hero::after{
+    content:"🦇";
+    position:absolute;
+    font-size:28px; opacity:.35;
+  }
+  .top-hero::before{ left:12px; top:10px; transform:rotate(-14deg) }
+  .top-hero::after{ right:12px; top:14px; transform:rotate(8deg) }
+  .top-hero h2{
+    margin:4px 0 4px;
+    font-size:22px; font-weight:800; letter-spacing:.5px;
+    color:#ffd28a;
+    text-shadow:0 0 10px rgba(255,122,0,.25), 0 0 18px rgba(255,122,0,.15);
+    animation: pumpkinGlow 2.4s ease-in-out infinite;
+  }
+  .top-hero .sub{
+    font-size:13.5px; color:#ffbd66;
+  }
 
   /* Cards */
-  .card { background:var(--card); border-radius:20px; box-shadow:var(--shadow); padding:22px; margin:18px 0; border:1px solid var(--line); }
-  h1 { font-size:26px; margin:0 0 8px; letter-spacing:.3px; }
-  h1::after { content:"  ♡"; color:var(--accent); font-weight:700; }
-  .muted { color:var(--muted); font-size:14px; }
+  .card{
+    background:var(--card);
+    border-radius:18px;
+    box-shadow: var(--shadow);
+    padding:20px;
+    margin:16px 0;
+    border:1px solid var(--line);
+    position: relative;
+  }
+  h1{ font-size:24px; margin:0 0 8px; letter-spacing:.3px; color:#ffd7a1; }
+  h1::after{ content:"  🎃"; color:var(--accent-2); font-weight:700; }
+  .muted{ color:var(--muted); font-size:14px; }
 
-  .row { display:flex; flex-wrap:wrap; gap:12px; align-items:center; }
-  label { font-weight:600; }
+  .row{ display:flex; flex-wrap:wrap; gap:12px; align-items:center; }
+  label{ font-weight:600; color:#ffe2bd; }
 
   /* Inputs */
-  input[type="text"] {
-    padding:10px 14px; border:1px solid var(--line); border-radius:999px; background:#fff; min-width:240px;
-    transition: box-shadow .2s ease, border-color .2s ease;
+  input[type="text"]{
+    padding:10px 14px;
+    border:1px solid #3a2f46;
+    border-radius:999px;
+    background:#1a1720;
+    color:#f9f5ee;
+    min-width:240px;
+    transition: box-shadow .2s ease, border-color .2s ease, background .2s;
   }
-  input[type="text"]:focus { outline:none; border-color:var(--accent-2); box-shadow:0 0 0 4px rgba(255,136,187,.18); }
+  input[type="text"]::placeholder{ color:#8f8699; }
+  input[type="text"]:focus{
+    outline:none; border-color:#4d2f12;
+    box-shadow:0 0 0 4px rgba(255,122,0,.18), 0 0 18px rgba(255,122,0,.15);
+    background:#1f1a28;
+  }
 
   /* Buttons */
-  button {
+  button{
     background:linear-gradient(180deg, var(--accent-2), var(--accent));
-    color:#fff; border:none; border-radius:999px; padding:10px 16px; cursor:pointer;
-    box-shadow:0 6px 14px rgba(255,102,161,.2);
+    color:#1a0f07; font-weight:800;
+    border:none; border-radius:999px;
+    padding:10px 16px; cursor:pointer;
+    box-shadow:0 8px 16px rgba(255,122,0,.25);
     transition: transform .08s ease, box-shadow .2s ease, opacity .2s ease;
   }
-  button:hover { transform: translateY(-1px); box-shadow:0 10px 18px rgba(255,102,161,.25); }
-  button.secondary { background:linear-gradient(180deg,#ffd9e8,#ffb7d5); color:#7a3a55; }
-  button:disabled { opacity:.6; cursor:not-allowed; }
+  button:hover{ transform:translateY(-1px); box-shadow:0 12px 20px rgba(255,122,0,.32); }
+  button.secondary{
+    background:linear-gradient(180deg,#3c304c,#2c2439);
+    color:#e8dbff;
+  }
+  button:disabled{ opacity:.6; cursor:not-allowed; }
 
   /* Badge */
-  .badge { display:inline-block; padding:3px 10px; border-radius:999px; font-size:12px; background:#ffe0ef; color:#7a3a55; border:1px solid var(--line); }
+  .badge{
+    display:inline-block; padding:3px 10px; border-radius:999px; font-size:12px;
+    background:#2c2130; color:#ffc680; border:1px solid #4a394e;
+  }
 
   /* Table */
-  table { width:100%; border-collapse:collapse; margin-top:10px; table-layout:auto; overflow:hidden; border-radius:14px; border:1px solid var(--line); }
-  th, td { text-align:left; padding:12px 12px; border-bottom:1px solid var(--line); vertical-align:top; }
-  th { background:linear-gradient(180deg,#fff5fa,#ffeaf3); color:#7a3a55; font-weight:700; }
-  .detail-row td { background:#fff9fc; font-size:14px; line-height:1.6; }
-  .detail-meta { display:flex; gap:18px; flex-wrap:wrap; }
-  .detail-meta b { color:#5c3c4b; }
-
-  /* Highlight */
-  mark { background:var(--hl); padding:0 .25em; border-radius:.35em; box-shadow:inset 0 -10px 0 rgba(255,214,230,.45); }
-
-  /* Status */
-  .error { color:var(--danger); }
-  .good { color:var(--ok); }
-
-  /* Notices */
-  .empty-box {
-    background:linear-gradient(135deg, rgba(255,240,247,.8) 0 10px, rgba(255,255,255,.8) 10px 20px) repeat;
-    background-size:20px 20px;
-    border:1px dashed #ffc1d7; border-radius:16px; padding:16px; color:#5c3c4b;
+  table{
+    width:100%; border-collapse:collapse; margin-top:10px; table-layout:auto;
+    overflow:hidden; border-radius:14px; border:1px solid var(--line);
   }
-  .empty-box::before { content:"🛍️✨ "; margin-right:6px; }
+  th, td{
+    text-align:left; padding:12px 12px; border-bottom:1px solid #292231; vertical-align:top;
+  }
+  th{
+    background:linear-gradient(180deg, #241b2a, #1b1520);
+    color:#ffcf83; font-weight:800;
+    text-shadow:0 0 10px rgba(255,122,0,.12);
+  }
+  .detail-row td{
+    background:#16121a; font-size:14px; line-height:1.6;
+  }
+  .detail-meta{ display:flex; gap:18px; flex-wrap:wrap; }
+  .detail-meta b{ color:#ffdba3; }
+
+  /* Highlight (ember glow) */
+  mark{
+    background: var(--hl);
+    color: var(--hl-glow);
+    padding:0 .25em; border-radius:.35em;
+    box-shadow: inset 0 -10px 0 rgba(255,140,0,.15), 0 0 0 1px rgba(255,121,0,.15);
+  }
+
+  /* Notices (webbed box) */
+  .empty-box{
+    background:
+      radial-gradient(140px 40px at 15% 10%, rgba(255,122,0,.12), transparent 70%),
+      radial-gradient(140px 40px at 85% 0%, rgba(181,108,255,.12), transparent 70%),
+      repeating-linear-gradient(135deg, rgba(255,122,0,.07), rgba(255,122,0,.07) 6px, rgba(0,0,0,0) 6px, rgba(0,0,0,0) 12px),
+      #151018;
+    border:1px dashed #6a4a20; border-radius:16px; padding:16px; color:#ffe9c9;
+  }
+  .empty-box::before{ content:"🕸️🕷️ "; margin-right:6px; }
+
+  /* --- Pumpkin ambient glow (暗夜南瓜光效) --- */
+  .pumpkin-glow{
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 1;
+  }
+  .pumpkin-glow::before,
+  .pumpkin-glow::after{
+    content:"";
+    position:absolute;
+    border-radius:50%;
+    filter: blur(60px);
+    opacity:.25;
+    animation: emberPulse 4.5s ease-in-out infinite;
+  }
+  .pumpkin-glow::before{
+    width: 42vmax; height: 42vmax;
+    left: -10vmax; bottom: -12vmax;
+    background: radial-gradient(circle at 50% 50%, rgba(255,122,0,.28), rgba(255,122,0,.05) 60%, transparent 70%);
+  }
+  .pumpkin-glow::after{
+    width: 32vmax; height: 32vmax;
+    right: -8vmax; top: -10vmax;
+    background: radial-gradient(circle at 50% 50%, rgba(181,108,255,.24), rgba(181,108,255,.05) 60%, transparent 70%);
+    animation-delay: 1.2s;
+  }
+
+  /* --- Floating Ghosts Container --- */
+  .ghost-layer{
+    pointer-events: none;
+    position: fixed;
+    inset: 0;
+    overflow: hidden;
+    z-index: 3; /* 高于背景光效，低于内容 */
+  }
+  .ghost{
+    position: absolute;
+    font-size: 28px;
+    opacity: .10; /* 若想更明显可调到 .25 */
+    filter: drop-shadow(0 4px 6px rgba(0,0,0,.25));
+    animation: floatGhost linear infinite;
+    user-select: none;
+  }
+
+  /* Keyframes */
+  @keyframes pumpkinGlow{
+    0%,100%{ text-shadow:0 0 10px rgba(255,122,0,.25), 0 0 18px rgba(255,122,0,.15); transform: translateY(0); }
+    50%{ text-shadow:0 0 16px rgba(255,160,77,.35), 0 0 24px rgba(255,122,0,.25); transform: translateY(-1px); }
+  }
+  @keyframes emberPulse{
+    0%,100%{ transform: scale(1); opacity:.22; }
+    50%{ transform: scale(1.07); opacity:.33; }
+  }
+  @keyframes floatGhost{
+    0%{ transform: translate3d(var(--xStart, -10vw), var(--y, 0vh), 0) rotate(0deg); }
+    100%{ transform: translate3d(110vw, calc(var(--y, 0vh) + var(--drift, 12vh)), 0) rotate(6deg); }
+  }
 
   /* Mobile */
-  @media (max-width: 600px) {
-    body { font-size:15px; }
-    th, td { padding:10px; }
-    .detail-row td { font-size:13px; }
+  @media (max-width: 600px){
+    body{ font-size:15px; }
+    th, td{ padding:10px; }
+    .detail-row td{ font-size:13px; }
+    .ghost{ font-size: 22px; }
   }
 </style>
 </head>
 <body>
+
+<!-- 背景：暗夜南瓜光效 -->
+<div class="pumpkin-glow" aria-hidden="true"></div>
+
+<!-- 前景：小幽灵漂浮层 -->
+<div class="ghost-layer" id="ghostLayer" aria-hidden="true"></div>
+
 <div class="container">
 
-  <!-- Kawaii banner -->
-  <div class="top-hero">
-    <h2>一一团购 高品质生活 价格也萌萌哒</h2>
-    <div class="sub">🛍️ 精选好物 · 贴心价格 · 快乐开箱 ✨</div>
+  <!-- Halloween banner -->
+  <div class="top-hero" role="banner" aria-label="万圣节快乐">
+    <h2>🎃 万圣节快乐！一一团购祝大家糖果多多、开心捣蛋！</h2>
+    <div class="sub">Trick or Treat · 甜甜不怕蛀牙（记得刷牙呀🪥）· 好运连连 👻</div>
   </div>
 
   <div class="card">
@@ -638,6 +748,7 @@ bayareaselect 绿植🍃头像
 </script>
 </body>
 </html>
+
 
 
 
