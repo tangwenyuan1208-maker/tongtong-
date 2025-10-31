@@ -503,6 +503,25 @@ function highlightMatches(userInput, targetText){
 
 客官请随意，喜欢哪个尽管拍，小二随时为您打包～📦💨`;
       listDiv.appendChild(empty);
+          listDiv.appendChild(table);
+
+    // 👇 If 2+ results and all belong to the same user name, show the thank-you note
+    if (rows.length >= 2) {
+      const uniqueNames = new Set(rows.map(r => String(r.d || '').trim()));
+      if (uniqueNames.size === 1) {
+        const note = document.createElement('div');
+        note.className = 'empty-box multiline';
+        note.style.marginTop = '12px';
+        note.innerHTML = `亲爱的客官们，最近看到您囤货的热情，小二感动得眼泪都快掉进打包袋里了😭
+感谢您一路支持、信任与厚爱！
+您的每一次下单，都是对小二继续努力的最大鼓励❤️
+祝您日日有好物，件件都喜欢！`;
+        listDiv.appendChild(note);
+      }
+    }
+
+    copyBtn.disabled = false;
+
       return;
     }
     setStatus(`找到 ${rows.length} 条记录。`);
@@ -617,6 +636,7 @@ function highlightMatches(userInput, targetText){
 </script>
 </body>
 </html>
+
 
 
 
