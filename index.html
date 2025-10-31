@@ -7,6 +7,45 @@
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
 <style>
+ /* --- Pink Kawaii Top Banner --- */
+.top-hero {
+  position: relative;
+  margin: 0 0 14px 0;
+  padding: 22px 14px;
+  text-align: center;
+  color: #7a3a55;
+  border-radius: 18px;
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+  background:
+    radial-gradient(circle at 8% 20%, #ffe6f2 0 120px, transparent 130px),
+    radial-gradient(circle at 92% 25%, #ffd9ea 0 120px, transparent 130px),
+    linear-gradient(180deg, #fff5fa, #ffeaf3);
+  overflow: hidden;
+}
+.top-hero::before, .top-hero::after {
+  content: "✿";
+  position: absolute;
+  font-size: 26px;
+  opacity: .25;
+  color: #ff66a1;
+}
+.top-hero::before { left: 12px; top: 8px; transform: rotate(-10deg); }
+.top-hero::after  { right: 12px; bottom: 8px; transform: rotate(15deg); }
+
+.top-hero h2 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: .5px;
+}
+.top-hero .sub {
+  margin-top: 6px;
+  font-size: 13.5px;
+  color: #8b6b7a;
+}
+
+  
   /* === Kawaii Pink Theme === */
   .multiline { white-space: pre-line; }
 
@@ -102,6 +141,10 @@
 </head>
 <body>
 <div class="container">
+<div class="top-hero">
+  <h2>一一团购 高品质生活 价格也萌萌哒</h2>
+  <div class="sub">🛍️ 精选好物 · 贴心价格 · 快乐开箱 ✨</div>
+</div>
 
   <!-- Banner -->
   <div class="banner">
@@ -552,6 +595,7 @@ bayareaselect 绿植🍃头像
 </script>
 </body>
 </html>
+
 
 
 
