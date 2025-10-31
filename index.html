@@ -222,8 +222,8 @@ bayareaselect 绿植🍃头像
     return /^[\u4e00-\u9fff]$/.test(str);
   }
 
- function extractTokensCNEN(input){
-  // Chinese sequences (we’ll build all substrings length >= 2)
+function extractTokensCNEN(input){
+  // Chinese sequences (build all substrings length >= 2)
   const cnSeq = (input.match(/[\u4e00-\u9fff]+/g) || []);
   const cnSubstrings = [];
   for (const seq of cnSeq) {
@@ -236,28 +236,28 @@ bayareaselect 绿植🍃头像
     }
   }
 
-  // Pure alphabetic “words”
+  // Pure alphabetic words
   const enWords = (input.match(/[A-Za-z]+/g) || []).map(w => w.toLowerCase());
 
-  // NEW: alphanumeric handles like egg57 / 57egg / a1b2 (no spaces)
-  // This intentionally overlaps with enWords; we’ll match these by substring.
+  // Alphanumeric handles (letters+digits, no space), e.g. egg57 / 57egg / a1b2
   const enAlnum = (input.match(/(?:[A-Za-z]+[0-9]+|[0-9]+[A-Za-z]+)[A-Za-z0-9]*/g) || [])
                     .map(s => s.toLowerCase());
 
   return { cnSubstrings, enWords, enAlnum };
 }
+
 function matchByRule(userInput, targetText){
   if (!userInput || !targetText) return false;
   const t = String(targetText);
   const tl = t.toLowerCase();
-// QUICK PATH: if the input itself looks like an alphanumeric handle (letters+digits with no space),
-// do a case-insensitive substring match against the target.
-const rawHandle = (userInput || "").trim();
-if (/[A-Za-z]\d|\d[A-Za-z]/.test(rawHandle)) {
-  if (tl.indexOf(rawHandle.toLowerCase()) !== -1) return true;
-}
 
-  // 单字汉字整格特判
+  // QUICK PATH: if input itself looks like an alphanumeric handle, do case-insensitive substring
+  const rawHandle = (userInput || "").trim();
+  if (/[A-Za-z]\d|\d[A-Za-z]/.test(rawHandle)) {
+    if (tl.indexOf(rawHandle.toLowerCase()) !== -1) return true;
+  }
+
+  // Single-Chinese-char special case
   const trimmedTarget = t.trim();
   if (/^[\u4e00-\u9fff]$/.test(trimmedTarget) && userInput.includes(trimmedTarget)) {
     return true;
@@ -265,25 +265,25 @@ if (/[A-Za-z]\d|\d[A-Za-z]/.test(rawHandle)) {
 
   const { cnSubstrings, enWords, enAlnum } = extractTokensCNEN(userInput);
 
-  // 中文：≥2 连字子串命中
+  // Chinese: ≥2 consecutive chars
   for (const sub of cnSubstrings) {
     if (sub && t.includes(sub)) return true;
   }
 
-  // 英文纯字母：整词命中（不区分大小写）
+  // English (pure letters): whole word (case-insensitive)
   for (const w of enWords) {
     if (!w) continue;
     const re = new RegExp(`\\b${w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
     if (re.test(tl)) return true;
   }
 
-  // NEW：英数混合（如 egg57）：大小写不敏感的“子串”命中
+  // Alphanumeric handles: case-insensitive substring
   for (const h of enAlnum) {
     if (!h) continue;
     if (tl.indexOf(h) !== -1) return true;
   }
 
-  // 特殊字符：既无中文子串也无英文/英数时，原样包含匹配
+  // Special chars fallback (no CN/EN/alnum) => raw substring
   if (cnSubstrings.length === 0 && enWords.length === 0 && enAlnum.length === 0) {
     const raw = userInput.trim();
     if (raw && t.includes(raw)) return true;
@@ -292,49 +292,99 @@ if (/[A-Za-z]\d|\d[A-Za-z]/.test(rawHandle)) {
   return false;
 }
 
-  function escapeRegExp(s){ return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
-  function escapeHTML(s){ return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
-
-  // 高亮“客户姓名”列：支持中文≥2连字、英文整词、以及“仅 1 个汉字”的特殊规则与“特殊字符原样匹配”
 function highlightMatches(userInput, targetText){
   const text = String(targetText || '');
   if (!userInput || !text) return escapeHTML(text);
 
-  const raw = userInput.trim();
-    // QUICK PATH highlight for an alphanumeric handle like "egg57"
-  const rawHandle = (userInput || "").trim();
-  if (/[A-Za-z]\d|\d[A-Za-z]/.test(rawHandle)) {
+  const raw = (userInput || "").trim();
+  const ranges = [];
+
+  // QUICK PATH highlight for an alphanumeric handle like "egg57"
+  if (/[A-Za-z]\d|\d[A-Za-z]/.test(raw)) {
     const lowerText = text.toLowerCase();
-    const needle = rawHandle.toLowerCase();
-    const ranges = [];
+    const needle = raw.toLowerCase();
     let start = 0, idx;
     while ((idx = lowerText.indexOf(needle, start)) !== -1) {
       ranges.push([idx, idx + needle.length]);
       start = idx + Math.max(1, needle.length);
     }
     if (ranges.length) {
-      // merge ranges
-      ranges.sort((a,b)=>a[0]-b[0] || a[1]-b[1]);
-      const merged = [];
-      let cur = ranges[0];
-      for (let i=1;i<ranges.length;i++){
-        const r = ranges[i];
-        if (r[0] <= cur[1]) cur[1] = Math.max(cur[1], r[1]);
-        else { merged.push(cur); cur = r; }
-      }
-      merged.push(cur);
-
-      // rebuild output
-      let out = '', last = 0;
-      for (const [s,e] of merged){
-        out += escapeHTML(text.slice(last, s));
-        out += '<mark>' + escapeHTML(text.slice(s, e)) + '</mark>';
-        last = e;
-      }
-      out += escapeHTML(text.slice(last));
-      return out;
+      // fall through to merge+render below
     }
   }
+
+  // Single Chinese char special case: highlight the whole char
+  const trimmedText = text.trim();
+  if (/^[\u4e00-\u9fff]$/.test(trimmedText) && raw.includes(trimmedText)) {
+    return '<mark>' + escapeHTML(text) + '</mark>';
+  }
+
+  const { cnSubstrings, enWords, enAlnum } = extractTokensCNEN(raw);
+
+  // Chinese ≥2 substrings
+  for (const sub of cnSubstrings) {
+    if (!sub) continue;
+    let idx = text.indexOf(sub);
+    while (idx !== -1) {
+      ranges.push([idx, idx + sub.length]);
+      idx = text.indexOf(sub, idx + 1);
+    }
+  }
+
+  // English whole words (case-insensitive)
+  for (const w of enWords) {
+    if (!w) continue;
+    const re = new RegExp(`\\b${w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'gi');
+    let m;
+    while ((m = re.exec(text)) !== null) {
+      ranges.push([m.index, m.index + m[0].length]);
+    }
+  }
+
+  // Alphanumeric handles: case-insensitive substring
+  for (const h of enAlnum) {
+    if (!h) continue;
+    const lowerText = text.toLowerCase();
+    let start = 0, idx;
+    while ((idx = lowerText.indexOf(h, start)) !== -1) {
+      ranges.push([idx, idx + h.length]);
+      start = idx + Math.max(1, h.length);
+    }
+  }
+
+  // Specials fallback: if no CN/EN/alnum tokens, raw substring
+  if (cnSubstrings.length === 0 && enWords.length === 0 && enAlnum.length === 0 && raw) {
+    let start = 0, idx;
+    while ((idx = text.indexOf(raw, start)) !== -1) {
+      ranges.push([idx, idx + raw.length]);
+      start = idx + Math.max(1, raw.length);
+    }
+  }
+
+  if (!ranges.length) return escapeHTML(text);
+
+  // Merge ranges
+  ranges.sort((a,b) => a[0]-b[0] || a[1]-b[1]);
+  const merged = [];
+  let cur = ranges[0];
+  for (let i=1; i<ranges.length; i++){
+    const r = ranges[i];
+    if (r[0] <= cur[1]) cur[1] = Math.max(cur[1], r[1]);
+    else { merged.push(cur); cur = r; }
+  }
+  merged.push(cur);
+
+  // Render
+  let out = '', last = 0;
+  for (const [s,e] of merged){
+    out += escapeHTML(text.slice(last, s));
+    out += '<mark>' + escapeHTML(text.slice(s, e)) + '</mark>';
+    last = e;
+  }
+  out += escapeHTML(text.slice(last));
+  return out;
+}
+
 
   const { cnSubstrings, enWords, enAlnum } = extractTokensCNEN(userInput);
   const ranges = [];
@@ -636,6 +686,7 @@ function highlightMatches(userInput, targetText){
 </script>
 </body>
 </html>
+
 
 
 
