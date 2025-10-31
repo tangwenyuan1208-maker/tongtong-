@@ -7,45 +7,43 @@
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
 <style>
- /* --- Pink Kawaii Top Banner --- */
-.top-hero {
-  position: relative;
-  margin: 0 0 14px 0;
-  padding: 22px 14px;
-  text-align: center;
-  color: #7a3a55;
-  border-radius: 18px;
-  border: 1px solid var(--line);
-  box-shadow: var(--shadow);
-  background:
-    radial-gradient(circle at 8% 20%, #ffe6f2 0 120px, transparent 130px),
-    radial-gradient(circle at 92% 25%, #ffd9ea 0 120px, transparent 130px),
-    linear-gradient(180deg, #fff5fa, #ffeaf3);
-  overflow: hidden;
-}
-.top-hero::before, .top-hero::after {
-  content: "✿";
-  position: absolute;
-  font-size: 26px;
-  opacity: .25;
-  color: #ff66a1;
-}
-.top-hero::before { left: 12px; top: 8px; transform: rotate(-10deg); }
-.top-hero::after  { right: 12px; bottom: 8px; transform: rotate(15deg); }
+  /* --- Pink Kawaii Top Banner --- */
+  .top-hero {
+    position: relative;
+    margin: 0 0 14px 0;
+    padding: 22px 14px;
+    text-align: center;
+    color: #7a3a55;
+    border-radius: 18px;
+    border: 1px solid var(--line);
+    box-shadow: var(--shadow);
+    background:
+      radial-gradient(circle at 8% 20%, #ffe6f2 0 120px, transparent 130px),
+      radial-gradient(circle at 92% 25%, #ffd9ea 0 120px, transparent 130px),
+      linear-gradient(180deg, #fff5fa, #ffeaf3);
+    overflow: hidden;
+  }
+  .top-hero::before, .top-hero::after {
+    content: "✿";
+    position: absolute;
+    font-size: 26px;
+    opacity: .25;
+    color: #ff66a1;
+  }
+  .top-hero::before { left: 12px; top: 8px; transform: rotate(-10deg); }
+  .top-hero::after  { right: 12px; bottom: 8px; transform: rotate(15deg); }
+  .top-hero h2 {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 800;
+    letter-spacing: .5px;
+  }
+  .top-hero .sub {
+    margin-top: 6px;
+    font-size: 13.5px;
+    color: #8b6b7a;
+  }
 
-.top-hero h2 {
-  margin: 0;
-  font-size: 20px;
-  font-weight: 800;
-  letter-spacing: .5px;
-}
-.top-hero .sub {
-  margin-top: 6px;
-  font-size: 13.5px;
-  color: #8b6b7a;
-}
-
-  
   /* === Kawaii Pink Theme === */
   .multiline { white-space: pre-line; }
 
@@ -73,10 +71,6 @@
   }
 
   .container { max-width:980px; margin:32px auto; padding:0 16px; }
-
-  /* Banner */
-  .banner { text-align:center; margin-bottom:16px; }
-  .banner img { max-width:100%; height:auto; border-radius:18px; box-shadow:var(--shadow); object-fit:contain; }
 
   /* Cards */
   .card { background:var(--card); border-radius:20px; box-shadow:var(--shadow); padding:22px; margin:18px 0; border:1px solid var(--line); }
@@ -141,12 +135,12 @@
 </head>
 <body>
 <div class="container">
-<div class="top-hero">
-  <h2>一一团购 高品质生活</h2>
-  <div class="sub">🛍️ 精选好物 · 贴心价格 · 快乐开箱 ✨</div>
-</div>
 
-
+  <!-- Kawaii banner -->
+  <div class="top-hero">
+    <h2>一一团购 高品质生活 价格也萌萌哒</h2>
+    <div class="sub">🛍️ 精选好物 · 贴心价格 · 快乐开箱 ✨</div>
+  </div>
 
   <div class="card">
     <h1>一一团近期接龙到货情况</h1>
@@ -187,8 +181,7 @@ bayareaselect 绿植🍃头像
       </div>
     </div>
     <div id="status" class="muted" style="margin-top:8px;">正在加载表格…</div>
-
-    <!-- The note (if any) will be inserted right before this list -->
+    <!-- The pre-note (if any) is inserted just before list -->
     <div id="list" style="margin-top:8px;"></div>
   </div>
 
@@ -227,7 +220,7 @@ bayareaselect 绿植🍃头像
   const countBadge = $('count');
   const updateTime = $('updateTime');
 
-  // error -> status
+  // show JS errors in status (helpful on mobile)
   window.addEventListener('error', (ev) => {
     try {
       const msg = (ev && ev.message) ? ev.message : String(ev);
@@ -236,7 +229,7 @@ bayareaselect 绿植🍃头像
     } catch {}
   });
 
-  // Helpers
+  /* ---------- Helpers ---------- */
   function escapeHTML(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
   function isSingleChineseChar(str){ return /^[\u4e00-\u9fff]$/.test(str); }
 
@@ -358,10 +351,8 @@ bayareaselect 绿植🍃头像
 
   // Insert a pre-result notice BEFORE the results list
   function insertPreResultNotice(html){
-    // remove old
     const old = document.getElementById('preNote');
     if (old) old.remove();
-    // insert new before listDiv
     const note = document.createElement('div');
     note.id = 'preNote';
     note.className = 'empty-box multiline';
@@ -370,7 +361,57 @@ bayareaselect 绿植🍃头像
     listDiv.parentNode.insertBefore(note, listDiv);
   }
 
-  // Auto-load Excel
+  /* ---------- Robust logger (JSON POST + sendBeacon + GET pixel) ---------- */
+  async function logSearch(name, matches) {
+    const payload = {
+      name: String(name || ''),
+      matches: Number(matches || 0),
+      ts: new Date().toISOString(),
+      page: location.href,
+      ua: navigator.userAgent,
+      v: '2025-10-30b'
+    };
+
+    // Try 1: JSON POST (opaque when no-cors)
+    try {
+      await fetch(LOG_ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        mode: 'no-cors',
+        body: JSON.stringify(payload)
+      });
+    } catch (e) {
+      console.warn('logSearch JSON POST failed:', e);
+    }
+
+    // Try 2: sendBeacon
+    try {
+      if (navigator.sendBeacon) {
+        const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
+        navigator.sendBeacon(LOG_ENDPOINT, blob);
+      }
+    } catch (e) {
+      console.warn('logSearch sendBeacon failed:', e);
+    }
+
+    // Try 3: 1x1 GET pixel
+    try {
+      const qs = new URLSearchParams({
+        name: payload.name.slice(0, 60),
+        matches: String(payload.matches),
+        ts: payload.ts,
+        page: payload.page.slice(0, 200),
+        v: payload.v
+      });
+      const img = new Image();
+      img.referrerPolicy = 'no-referrer';
+      img.src = LOG_ENDPOINT + '?' + qs.toString();
+    } catch (e) {
+      console.warn('logSearch GET beacon failed:', e);
+    }
+  }
+
+  /* ---------- Load Excel ---------- */
   (async function loadExcel(){
     resetUI();
     try {
@@ -405,14 +446,14 @@ bayareaselect 绿植🍃头像
     searchBtn.disabled = false;
   }
 
-  // Events
+  /* ---------- Events ---------- */
   nameInput.addEventListener('keydown', e => { if (e.key === 'Enter' && !searchBtn.disabled) doSearch(); });
   nameInput.addEventListener('input', () => { searchBtn.disabled = !(nameInput.value || '').trim(); });
   searchBtn.addEventListener('click', doSearch);
   showPayStatusBox.addEventListener('change', () => { if (!searchBtn.disabled) doSearch(); });
   copyBtn.addEventListener('click', copyResults);
 
-  // Search
+  /* ---------- Search ---------- */
   function doSearch(){
     if (sheetDataMap.size === 0) { setStatus("Excel 文件未加载。", true); return; }
     const key = (nameInput.value || "").trim();
@@ -437,6 +478,9 @@ bayareaselect 绿植🍃头像
       }
     }
 
+    // log the search (robust)
+    logSearch(key, results.length);
+
     renderResults(results, key);
   }
 
@@ -451,13 +495,13 @@ bayareaselect 绿植🍃头像
     return new Intl.NumberFormat('en-US', { style:'currency', currency:'USD' }).format(num);
   }
 
-  // Render
+  /* ---------- Render ---------- */
   function renderResults(rows, key){
     countBadge.textContent = rows.length;
     listDiv.innerHTML = '';
     const showPayStatus = showPayStatusBox.checked;
 
-    // Always clear previous pre-note
+    // clear previous pre-note
     const existed = document.getElementById('preNote');
     if (existed) existed.remove();
 
@@ -476,7 +520,7 @@ bayareaselect 绿植🍃头像
       return;
     }
 
-    // ≥2 results → show the thank-you note BEFORE results (regardless of same name)
+    // ≥2 results → show the thank-you note BEFORE results
     if (rows.length >= 2) {
       insertPreResultNotice(
 `亲爱的客官们，最近看到您囤货的热情，小二感动得眼泪都快掉进打包袋里了😭
@@ -537,7 +581,7 @@ bayareaselect 绿植🍃头像
     copyBtn.disabled = false;
   }
 
-  // Copy TSV（包含 E、F 列）
+  /* ---------- Copy TSV ---------- */
   async function copyResults(){
     const showPayStatus = showPayStatusBox.checked;
     const header = ['序号','到货状态'];
@@ -578,6 +622,7 @@ bayareaselect 绿植🍃头像
     }
   }
 
+  /* ---------- UI state ---------- */
   function setStatus(msg, isError=false, good=false){
     statusDiv.textContent = msg;
     statusDiv.className = isError ? 'error' : good ? 'good' : 'muted';
@@ -593,6 +638,8 @@ bayareaselect 绿植🍃头像
 </script>
 </body>
 </html>
+
+
 
 
 
