@@ -222,103 +222,151 @@ bayareaselect 绿植🍃头像
     return /^[\u4e00-\u9fff]$/.test(str);
   }
 
-  function extractTokensCNEN(input){
-    const cnSeq = (input.match(/[\u4e00-\u9fff]+/g) || []);
-    const cnSubstrings = [];
-    for (const seq of cnSeq) {
-      if (seq.length >= 2) {
-        for (let L = 2; L <= seq.length; L++) {
-          for (let i = 0; i + L <= seq.length; i++) {
-            cnSubstrings.push(seq.slice(i, i+L));
-          }
+ function extractTokensCNEN(input){
+  // Chinese sequences (we’ll build all substrings length >= 2)
+  const cnSeq = (input.match(/[\u4e00-\u9fff]+/g) || []);
+  const cnSubstrings = [];
+  for (const seq of cnSeq) {
+    if (seq.length >= 2) {
+      for (let L = 2; L <= seq.length; L++) {
+        for (let i = 0; i + L <= seq.length; i++) {
+          cnSubstrings.push(seq.slice(i, i+L));
         }
       }
     }
-    const enWords = (input.match(/[A-Za-z]+/g) || []).map(w => w.toLowerCase());
-    return { cnSubstrings, enWords };
   }
 
-  function matchByRule(userInput, targetText){
-    if (!userInput || !targetText) return false;
-    const t = String(targetText);
-    const tl = t.toLowerCase();
+  // Pure alphabetic “words”
+  const enWords = (input.match(/[A-Za-z]+/g) || []).map(w => w.toLowerCase());
 
-    // 规则补充：若 D 列为“单个汉字”，且输入包含该字 -> 匹配
-    const trimmedTarget = t.trim();
-    if (isSingleChineseChar(trimmedTarget) && userInput.includes(trimmedTarget)) {
-      return true;
-    }
+  // NEW: alphanumeric handles like egg57 / 57egg / a1b2 (no spaces)
+  // This intentionally overlaps with enWords; we’ll match these by substring.
+  const enAlnum = (input.match(/(?:[A-Za-z]+[0-9]+|[0-9]+[A-Za-z]+)[A-Za-z0-9]*/g) || [])
+                    .map(s => s.toLowerCase());
 
-    const { cnSubstrings, enWords } = extractTokensCNEN(userInput);
+  return { cnSubstrings, enWords, enAlnum };
+}
+function matchByRule(userInput, targetText){
+  if (!userInput || !targetText) return false;
+  const t = String(targetText);
+  const tl = t.toLowerCase();
 
-    // 中文：≥2 连字子串命中
-    for (const sub of cnSubstrings) {
-      if (sub && t.includes(sub)) return true;
-    }
-    // 英文：整词命中（不区分大小写）
-    for (const w of enWords) {
-      if (!w) continue;
-      const re = new RegExp(`\\b${escapeRegExp(w)}\\b`, 'i');
-      if (re.test(tl)) return true;
-    }
-
-    // 特殊字符：若没有中文子串也没有英文单词，则按“原样包含”匹配
-    if (cnSubstrings.length === 0 && enWords.length === 0) {
-      const raw = userInput.trim();
-      if (raw && t.includes(raw)) return true;
-    }
-
-    return false;
+  // 单字汉字整格特判
+  const trimmedTarget = t.trim();
+  if (/^[\u4e00-\u9fff]$/.test(trimmedTarget) && userInput.includes(trimmedTarget)) {
+    return true;
   }
+
+  const { cnSubstrings, enWords, enAlnum } = extractTokensCNEN(userInput);
+
+  // 中文：≥2 连字子串命中
+  for (const sub of cnSubstrings) {
+    if (sub && t.includes(sub)) return true;
+  }
+
+  // 英文纯字母：整词命中（不区分大小写）
+  for (const w of enWords) {
+    if (!w) continue;
+    const re = new RegExp(`\\b${w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
+    if (re.test(tl)) return true;
+  }
+
+  // NEW：英数混合（如 egg57）：大小写不敏感的“子串”命中
+  for (const h of enAlnum) {
+    if (!h) continue;
+    if (tl.indexOf(h) !== -1) return true;
+  }
+
+  // 特殊字符：既无中文子串也无英文/英数时，原样包含匹配
+  if (cnSubstrings.length === 0 && enWords.length === 0 && enAlnum.length === 0) {
+    const raw = userInput.trim();
+    if (raw && t.includes(raw)) return true;
+  }
+
+  return false;
+}
 
   function escapeRegExp(s){ return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
   function escapeHTML(s){ return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
   // 高亮“客户姓名”列：支持中文≥2连字、英文整词、以及“仅 1 个汉字”的特殊规则与“特殊字符原样匹配”
-  function highlightMatches(userInput, targetText){
-    const text = String(targetText || '');
-    if (!userInput || !text) return escapeHTML(text);
+function highlightMatches(userInput, targetText){
+  const text = String(targetText || '');
+  if (!userInput || !text) return escapeHTML(text);
 
-    const raw = userInput.trim();
-    const { cnSubstrings, enWords } = extractTokensCNEN(userInput);
-    const ranges = [];
+  const raw = userInput.trim();
+  const { cnSubstrings, enWords, enAlnum } = extractTokensCNEN(userInput);
+  const ranges = [];
 
-    // 特判：目标为单个汉字，且输入包含该字 -> 高亮整个字
-    const trimmedText = text.trim();
-    if (isSingleChineseChar(trimmedText) && raw.includes(trimmedText)) {
-      return '<mark>' + escapeHTML(text) + '</mark>';
+  // 目标为单个汉字且输入包含 -> 整字高亮
+  const trimmedText = text.trim();
+  if (/^[\u4e00-\u9fff]$/.test(trimmedText) && raw.includes(trimmedText)) {
+    return '<mark>' + escapeHTML(text) + '</mark>';
+  }
+
+  // 中文 ≥2 连字：逐段高亮
+  for (const sub of cnSubstrings) {
+    if (!sub) continue;
+    let idx = text.indexOf(sub);
+    while (idx !== -1) {
+      ranges.push([idx, idx + sub.length]);
+      idx = text.indexOf(sub, idx + 1);
     }
+  }
 
-    // 中文 ≥2 连字命中
-    for (const sub of cnSubstrings) {
-      if (!sub) continue;
-      let idx = text.indexOf(sub);
-      while (idx !== -1) {
-        ranges.push([idx, idx + sub.length]);
-        idx = text.indexOf(sub, idx + 1);
-      }
+  // 英文纯字母：整词（不区分大小写）
+  for (const w of enWords) {
+    if (!w) continue;
+    const re = new RegExp(`\\b${w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'gi');
+    let m;
+    while ((m = re.exec(text)) !== null) {
+      ranges.push([m.index, m.index + m[0].length]);
     }
+  }
 
-    // 英文整词（不区分大小写）
-    for (const w of enWords) {
-      if (!w) continue;
-      const re = new RegExp(`\\b${escapeRegExp(w)}\\b`, 'gi');
-      let m;
-      while ((m = re.exec(text)) !== null) {
-        ranges.push([m.index, m.index + m[0].length]);
-      }
+  // NEW：英数混合句柄（egg57 等）：大小写不敏感“子串”高亮
+  for (const h of enAlnum) {
+    if (!h) continue;
+    const lowerText = text.toLowerCase();
+    let start = 0, idx;
+    while ((idx = lowerText.indexOf(h, start)) !== -1) {
+      ranges.push([idx, idx + h.length]);
+      start = idx + Math.max(1, h.length);
     }
+  }
 
-    // 若既无中文子串也无英文单词 -> 作为“特殊字符原样匹配”
-    if (cnSubstrings.length === 0 && enWords.length === 0 && raw) {
-      let start = 0;
-      while (true) {
-        const idx = text.indexOf(raw, start);
-        if (idx === -1) break;
-        ranges.push([idx, idx + raw.length]);
-        start = idx + (raw.length || 1);
-      }
+  // 若既无中文子串也无英/英数 -> 特殊字符原样匹配高亮
+  if (cnSubstrings.length === 0 && enWords.length === 0 && enAlnum.length === 0 && raw) {
+    let start = 0, idx;
+    while ((idx = text.indexOf(raw, start)) !== -1) {
+      ranges.push([idx, idx + raw.length]);
+      start = idx + Math.max(1, raw.length);
     }
+  }
+
+  if (!ranges.length) return escapeHTML(text);
+
+  // 合并区间
+  ranges.sort((a,b) => a[0]-b[0] || a[1]-b[1]);
+  const merged = [];
+  let cur = ranges[0];
+  for (let i=1; i<ranges.length; i++){
+    const r = ranges[i];
+    if (r[0] <= cur[1]) cur[1] = Math.max(cur[1], r[1]);
+    else { merged.push(cur); cur = r; }
+  }
+  merged.push(cur);
+
+  // 生成高亮 HTML
+  let out = '', last = 0;
+  for (const [s,e] of merged){
+    out += escapeHTML(text.slice(last, s));
+    out += '<mark>' + escapeHTML(text.slice(s, e)) + '</mark>';
+    last = e;
+  }
+  out += escapeHTML(text.slice(last));
+  return out;
+}
 
     if (!ranges.length) return escapeHTML(text);
 
@@ -528,6 +576,7 @@ bayareaselect 绿植🍃头像
 </script>
 </body>
 </html>
+
 
 
 
