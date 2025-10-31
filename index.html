@@ -250,6 +250,12 @@ function matchByRule(userInput, targetText){
   if (!userInput || !targetText) return false;
   const t = String(targetText);
   const tl = t.toLowerCase();
+// QUICK PATH: if the input itself looks like an alphanumeric handle (letters+digits with no space),
+// do a case-insensitive substring match against the target.
+const rawHandle = (userInput || "").trim();
+if (/[A-Za-z]\d|\d[A-Za-z]/.test(rawHandle)) {
+  if (tl.indexOf(rawHandle.toLowerCase()) !== -1) return true;
+}
 
   // 单字汉字整格特判
   const trimmedTarget = t.trim();
@@ -295,6 +301,41 @@ function highlightMatches(userInput, targetText){
   if (!userInput || !text) return escapeHTML(text);
 
   const raw = userInput.trim();
+    // QUICK PATH highlight for an alphanumeric handle like "egg57"
+  const rawHandle = (userInput || "").trim();
+  if (/[A-Za-z]\d|\d[A-Za-z]/.test(rawHandle)) {
+    const lowerText = text.toLowerCase();
+    const needle = rawHandle.toLowerCase();
+    const ranges = [];
+    let start = 0, idx;
+    while ((idx = lowerText.indexOf(needle, start)) !== -1) {
+      ranges.push([idx, idx + needle.length]);
+      start = idx + Math.max(1, needle.length);
+    }
+    if (ranges.length) {
+      // merge ranges
+      ranges.sort((a,b)=>a[0]-b[0] || a[1]-b[1]);
+      const merged = [];
+      let cur = ranges[0];
+      for (let i=1;i<ranges.length;i++){
+        const r = ranges[i];
+        if (r[0] <= cur[1]) cur[1] = Math.max(cur[1], r[1]);
+        else { merged.push(cur); cur = r; }
+      }
+      merged.push(cur);
+
+      // rebuild output
+      let out = '', last = 0;
+      for (const [s,e] of merged){
+        out += escapeHTML(text.slice(last, s));
+        out += '<mark>' + escapeHTML(text.slice(s, e)) + '</mark>';
+        last = e;
+      }
+      out += escapeHTML(text.slice(last));
+      return out;
+    }
+  }
+
   const { cnSubstrings, enWords, enAlnum } = extractTokensCNEN(userInput);
   const ranges = [];
 
@@ -576,6 +617,7 @@ function highlightMatches(userInput, targetText){
 </script>
 </body>
 </html>
+
 
 
 
