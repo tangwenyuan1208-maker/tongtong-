@@ -4,164 +4,65 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>一一团近期接龙到货情况</title>
-<!-- SheetJS (CDN). If your network blocks jsDelivr, see the in-page error message and host a local copy at ./lib/xlsx.full.min.js -->
-<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+<!-- SheetJS with local fallback if CDN is blocked -->
+<script>
+(function(){
+  var s = document.createElement('script');
+  s.src = "https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js";
+  s.onerror = function () {
+    var s2 = document.createElement('script');
+    s2.src = "lib/xlsx.full.min.js";  // put a local copy here if CDN blocked
+    document.head.appendChild(s2);
+  };
+  document.head.appendChild(s);
+})();
+</script>
 
 <style>
-/* === Kawaii Pink Theme === */
+/* === Kawaii Pink Theme (wrapped in <style>) === */
 .multiline { white-space: pre-line; }
-
-/* Pastel pink palette */
-:root {
-  --bg: #fff6fb;
-  --bg-accent: #ffeef6;
-  --card: #ffffff;
-  --muted: #7a6d78;
-  --accent: #ff66a1;
-  --accent-2: #ff8bbb;
-  --ok: #3cc88f;
-  --danger: #ff5d7a;
-  --hl: #ffe5f0;
-  --line: #ffd6e6;
-  --shadow: 0 10px 30px rgba(255, 102, 161, 0.12);
-}
-
+:root { --bg:#fff6fb; --bg-accent:#ffeef6; --card:#fff; --muted:#7a6d78; --accent:#ff66a1; --accent-2:#ff8bbb; --ok:#3cc88f; --danger:#ff5d7a; --hl:#ffe5f0; --line:#ffd6e6; --shadow:0 10px 30px rgba(255,102,161,.12); }
 body {
-  margin: 0;
-  font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,
-               "Helvetica Neue",Arial,"Noto Sans SC",sans-serif;
-  color: #3a2c36;
-  background:
-    radial-gradient(1200px 600px at 10% -10%, #fff0f7 10%, transparent 60%),
-    radial-gradient(1200px 600px at 110% 10%, #ffeef6 10%, transparent 60%),
-    var(--bg);
+  margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Noto Sans SC",sans-serif; color:#3a2c36;
+  background: radial-gradient(1200px 600px at 10% -10%, #fff0f7 10%, transparent 60%),
+              radial-gradient(1200px 600px at 110% 10%, #ffeef6 10%, transparent 60%), var(--bg);
 }
-
-.container { max-width: 980px; margin: 32px auto; padding: 0 16px; }
-
-/* Top pink bar to prove theme is active */
-.topbar {
-  background: linear-gradient(90deg, var(--accent-2), var(--accent));
-  color: #fff;
-  padding: 10px 16px;
-  text-align: center;
-  font-weight: 700;
-  border-bottom: 1px solid var(--line);
-  border-radius: 0 0 16px 16px;
-  box-shadow: var(--shadow);
-}
-
-/* Banner */
-.banner { text-align: center; margin: 16px 0; }
-.banner img {
-  max-width: 100%; height: auto;
-  border-radius: 18px; box-shadow: var(--shadow);
-  object-fit: contain;
-}
-
-/* Cards */
-.card {
-  background: var(--card);
-  border-radius: 20px;
-  box-shadow: var(--shadow);
-  padding: 22px;
-  margin: 18px 0;
-  border: 1px solid var(--line);
-}
-h1 { font-size: 26px; margin: 0 0 8px; letter-spacing: .3px; }
-h1::after { content: "  ♡"; color: var(--accent); font-weight: 700; }
-.muted { color: var(--muted); font-size: 14px; }
-
-.row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
-label { font-weight: 600; }
-
-/* Inputs */
-input[type="text"] {
-  padding: 10px 14px;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  background: #fff;
-  min-width: 240px;
-  transition: box-shadow .2s ease, border-color .2s ease;
-}
-input[type="text"]:focus {
-  outline: none;
-  border-color: var(--accent-2);
-  box-shadow: 0 0 0 4px rgba(255, 136, 187, .18);
-}
-
-/* Buttons */
-button {
-  background: linear-gradient(180deg, var(--accent-2), var(--accent));
-  color: #fff; border: none; border-radius: 999px;
-  padding: 10px 16px; cursor: pointer;
-  box-shadow: 0 6px 14px rgba(255, 102, 161, .2);
-  transition: transform .08s ease, box-shadow .2s ease, opacity .2s ease;
-}
-button:hover { transform: translateY(-1px); box-shadow: 0 10px 18px rgba(255, 102, 161, .25); }
-button:active { transform: translateY(0); }
-button.secondary { background: linear-gradient(180deg, #ffd9e8, #ffb7d5); color: #7a3a55; }
-button:disabled { opacity: .6; cursor: not-allowed; }
-
-/* Badge */
-.badge {
-  display: inline-block;
-  padding: 3px 10px;
-  border-radius: 999px;
-  font-size: 12px;
-  background: #ffe0ef;
-  color: #7a3a55;
-  border: 1px solid var(--line);
-}
-
-/* Table */
-table {
-  width: 100%; border-collapse: collapse; margin-top: 10px;
-  table-layout: auto; overflow: hidden; border-radius: 14px; border: 1px solid var(--line);
-}
-th, td { text-align: left; padding: 12px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
-th { background: linear-gradient(180deg, #fff5fa, #ffeaf3); color: #7a3a55; font-weight: 700; }
-.detail-row td { background: #fff9fc; font-size: 14px; line-height: 1.6; }
-.detail-meta { display: flex; gap: 18px; flex-wrap: wrap; }
-.detail-meta b { color: #5c3c4b; }
-
-/* Highlight */
-mark {
-  background: var(--hl);
-  padding: 0 .25em; border-radius: .35em;
-  box-shadow: inset 0 -10px 0 rgba(255, 214, 230, .45);
-}
-
-/* Status colors */
-.error { color: var(--danger); }
-.good { color: var(--ok); }
-
-/* Empty/result notes */
-.empty-box {
-  background:
-    linear-gradient(135deg, rgba(255, 240, 247, .8) 0 10px, rgba(255,255,255,.8) 10px 20px) repeat;
-  background-size: 20px 20px;
-  border: 1px dashed #ffc1d7; border-radius: 16px;
-  padding: 16px; color: #5c3c4b;
-}
-.empty-box::before { content: "🛍️✨ "; margin-right: 6px; }
-
-/* Mobile */
-@media (max-width: 600px) {
-  body { font-size: 15px; }
-  th, td { padding: 10px; }
-  .detail-row td { font-size: 13px; }
-}
+.topbar{background:linear-gradient(90deg,var(--accent-2),var(--accent));color:#fff;padding:10px 16px;text-align:center;font-weight:700;border-bottom:1px solid var(--line);border-radius:0 0 16px 16px;box-shadow:var(--shadow);}
+.container{max-width:980px;margin:32px auto;padding:0 16px;}
+.banner{text-align:center;margin:16px 0;}
+.banner img{max-width:100%;height:auto;border-radius:18px;box-shadow:var(--shadow);object-fit:contain;}
+.card{background:var(--card);border-radius:20px;box-shadow:var(--shadow);padding:22px;margin:18px 0;border:1px solid var(--line);}
+h1{font-size:26px;margin:0 0 8px;letter-spacing:.3px;}
+h1::after{content:"  ♡";color:var(--accent);font-weight:700;}
+.muted{color:var(--muted);font-size:14px;}
+.row{display:flex;flex-wrap:wrap;gap:12px;align-items:center;}
+label{font-weight:600;}
+input[type="text"]{padding:10px 14px;border:1px solid var(--line);border-radius:999px;background:#fff;min-width:240px;transition:box-shadow .2s,border-color .2s;}
+input[type="text"]:focus{outline:none;border-color:var(--accent-2);box-shadow:0 0 0 4px rgba(255,136,187,.18);}
+button{background:linear-gradient(180deg,var(--accent-2),var(--accent));color:#fff;border:none;border-radius:999px;padding:10px 16px;cursor:pointer;box-shadow:0 6px 14px rgba(255,102,161,.2);transition:transform .08s,box-shadow .2s,opacity .2s;}
+button:hover{transform:translateY(-1px);box-shadow:0 10px 18px rgba(255,102,161,.25);}
+button.secondary{background:linear-gradient(180deg,#ffd9e8,#ffb7d5);color:#7a3a55;}
+button:disabled{opacity:.6;cursor:not-allowed;}
+.badge{display:inline-block;padding:3px 10px;border-radius:999px;font-size:12px;background:#ffe0ef;color:#7a3a55;border:1px solid var(--line);}
+table{width:100%;border-collapse:collapse;margin-top:10px;table-layout:auto;overflow:hidden;border-radius:14px;border:1px solid var(--line);}
+th,td{text-align:left;padding:12px;border-bottom:1px solid var(--line);vertical-align:top;}
+th{background:linear-gradient(180deg,#fff5fa,#ffeaf3);color:#7a3a55;font-weight:700;}
+.detail-row td{background:#fff9fc;font-size:14px;line-height:1.6;}
+.detail-meta{display:flex;gap:18px;flex-wrap:wrap;}
+.detail-meta b{color:#5c3c4b;}
+mark{background:var(--hl);padding:0 .25em;border-radius:.35em;box-shadow:inset 0 -10px 0 rgba(255,214,230,.45);}
+.error{color:var(--danger);} .good{color:var(--ok);}
+.empty-box{background:linear-gradient(135deg,rgba(255,240,247,.8) 0 10px,rgba(255,255,255,.8) 10px 20px) repeat;background-size:20px 20px;border:1px dashed #ffc1d7;border-radius:16px;padding:16px;color:#5c3c4b;}
+.empty-box::before{content:"🛍️✨ ";margin-right:6px;}
+@media (max-width:600px){body{font-size:15px;} th,td{padding:10px;} .detail-row td{font-size:13px;}}
 </style>
 </head>
 <body>
 <div class="topbar">一一团 • 萌萌哒接龙助手</div>
 
 <div class="container">
-  <!-- Banner -->
-  <div class="banner">
-    <img src="./logo.png" alt="一一团 Logo Banner">
-  </div>
+  <div class="banner"><img src="./logo.png" alt="一一团 Logo Banner"></div>
 
   <div class="card">
     <h1>一一团近期接龙到货情况</h1>
@@ -205,19 +106,18 @@ bayareaselect 绿植🍃头像
     <div id="list" style="margin-top:8px;"></div>
   </div>
 
-  <!-- 到货进度说明 -->
   <div class="card">
     <h2 style="font-size:18px; margin-bottom:10px;">截至10月28日的团购到货进度：</h2>
     <div style="white-space:pre-line; line-height:1.6;">
- 1. rototobebe还有25%没到。
- 2. miki预定团的鞋子衣服下单后三周左右到货的节奏，在陆续到货。
- 3. petit main还没有从日本发出，预计十一月中上旬到货，有部分是还未发售的款式，要十一月中下旬到货。
- 4. 香水团爱马仕香水到齐，jo malone dipytique byredo预计还要1-2周左右。
- 5. stample到齐60%，仍在继续到货。
- 6. 部分之前的skater被卡在海关两个月，团长已重新订货，十一月初到齐。
- 7. 贝亲指甲刀到齐，其他的下两周到齐。
- 8. miki袜子到齐，福袋十二月中下旬到货。
- 9. gelato pique已陆续从日本寄出，预计下两周左右到齐。
+1. rototobebe还有25%没到。
+2. miki预定团的鞋子衣服下单后三周左右到货的节奏，在陆续到货。
+3. petit main还没有从日本发出，预计十一月中上旬到货，有部分是还未发售的款式，要十一月中下旬到货。
+4. 香水团爱马仕香水到齐，jo malone dipytique byredo预计还要1-2周左右。
+5. stample到齐60%，仍在继续到货。
+6. 部分之前的skater被卡在海关两个月，团长已重新订货，十一月初到齐。
+7. 贝亲指甲刀到齐，其他的下两周到齐。
+8. miki袜子到齐，福袋十二月中下旬到货。
+9. gelato pique已陆续从日本寄出，预计下两周左右到齐。
 10. labubu供应商已发货，预计下两周内陆续到货。
     </div>
   </div>
@@ -225,43 +125,29 @@ bayareaselect 绿植🍃头像
 
 <script>
 (function(){
-  const excelPath = "./orders.xlsx"; // must exist in the same folder, exact case!
-  const LOG_ENDPOINT = ""; // optional
-
+  // Add a cache-buster so stale copies aren’t cached by the CDN/browser
+  const excelPath = "./orders.xlsx?v=" + Date.now();
   let workbook = null;
   const sheetDataMap = new Map();
-  const $ = id => document.getElementById(id);
-  const nameInput = $('name');
-  const showPayStatusBox = $('showPayStatus');
-  const searchBtn = $('searchBtn');
-  const copyBtn = $('copyBtn');
-  const listDiv = $('list');
-  const statusDiv = $('status');
-  const countBadge = $('count');
-  const updateTime = $('updateTime');
 
-  // Show JS errors in status
+  const $ = id => document.getElementById(id);
+  const nameInput = $('name'), showPayStatusBox = $('showPayStatus'), searchBtn = $('searchBtn'),
+        copyBtn = $('copyBtn'), listDiv = $('list'), statusDiv = $('status'),
+        countBadge = $('count'), updateTime = $('updateTime');
+
+  // Show JS errors in the UI
   window.addEventListener('error', (ev) => {
-    const msg = (ev && ev.message) ? ev.message : String(ev);
-    setStatus('脚本错误：' + msg, true);
+    setStatus('脚本错误：' + (ev && ev.message ? ev.message : String(ev)), true);
   });
 
-  // Helpers
   function escapeHTML(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
   function isSingleChineseChar(str){ return /^[\u4e00-\u9fff]$/.test(str); }
 
   function extractTokensCNEN(input){
     const cnSeq = (input.match(/[\u4e00-\u9fff]+/g) || []);
     const cnSubstrings = [];
-    for (const seq of cnSeq) {
-      if (seq.length >= 2) {
-        for (let L = 2; L <= seq.length; L++) {
-          for (let i = 0; i + L <= seq.length; i++) {
-            cnSubstrings.push(seq.slice(i, i+L));
-          }
-        }
-      }
-    }
+    for (const seq of cnSeq) if (seq.length >= 2)
+      for (let L=2; L<=seq.length; L++) for (let i=0; i+L<=seq.length; i++) cnSubstrings.push(seq.slice(i,i+L));
     const enWords = (input.match(/[A-Za-z]+/g) || []).map(w => w.toLowerCase());
     const enAlnum = (input.match(/(?:[A-Za-z]+[0-9]+|[0-9]+[A-Za-z]+)[A-Za-z0-9]*/g) || []).map(s => s.toLowerCase());
     return { cnSubstrings, enWords, enAlnum };
@@ -269,282 +155,159 @@ bayareaselect 绿植🍃头像
 
   function matchByRule(userInput, targetText){
     if (!userInput || !targetText) return false;
-    const t = String(targetText);
-    const tl = t.toLowerCase();
-    const rawHandle = (userInput || "").trim();
-
-    if (/[A-Za-z]\d|\d[A-Za-z]/.test(rawHandle)) {
-      if (tl.indexOf(rawHandle.toLowerCase()) !== -1) return true;
-    }
-
-    const trimmedTarget = t.trim();
-    if (isSingleChineseChar(trimmedTarget) && userInput.includes(trimmedTarget)) return true;
-
+    const t = String(targetText), tl = t.toLowerCase(), raw = (userInput||"").trim();
+    if (/[A-Za-z]\d|\d[A-Za-z]/.test(raw) && tl.includes(raw.toLowerCase())) return true;
+    if (isSingleChineseChar(t.trim()) && raw.includes(t.trim())) return true;
     const { cnSubstrings, enWords, enAlnum } = extractTokensCNEN(userInput);
-
     for (const sub of cnSubstrings) if (sub && t.includes(sub)) return true;
-
-    for (const w of enWords) {
-      if (!w) continue;
-      const re = new RegExp(`\\b${w.replace(/[.*+?^${}()|[\\]\\\\]/g,'\\$&')}\\b`, 'i');
-      if (re.test(tl)) return true;
-    }
-
-    for (const h of enAlnum) if (h && tl.indexOf(h) !== -1) return true;
-
-    if (cnSubstrings.length === 0 && enWords.length === 0 && enAlnum.length === 0) {
-      const raw = userInput.trim();
-      if (raw && t.includes(raw)) return true;
-    }
+    for (const w of enWords) { if (!w) continue; if (new RegExp(`\\b${w.replace(/[.*+?^${}()|[\\]\\\\]/g,'\\$&')}\\b`,'i').test(tl)) return true; }
+    for (const h of enAlnum) if (h && tl.includes(h)) return true;
+    if (!cnSubstrings.length && !enWords.length && !enAlnum.length) { const r = raw.trim(); if (r && t.includes(r)) return true; }
     return false;
   }
 
   function highlightMatches(userInput, targetText){
-    const text = String(targetText || '');
-    if (!userInput || !text) return escapeHTML(text);
-
-    const raw = (userInput || "").trim();
-    const ranges = [];
-
+    const text = String(targetText||''); if (!userInput || !text) return escapeHTML(text);
+    const raw = (userInput||"").trim(); const ranges = [];
     if (/[A-Za-z]\d|\d[A-Za-z]/.test(raw)) {
-      const lowerText = text.toLowerCase();
-      const needle = raw.toLowerCase();
-      let start = 0, idx;
-      while ((idx = lowerText.indexOf(needle, start)) !== -1) {
-        ranges.push([idx, idx + needle.length]);
-        start = idx + Math.max(1, needle.length);
-      }
+      const low = text.toLowerCase(), needle = raw.toLowerCase(); let i=0, idx;
+      while ((idx = low.indexOf(needle, i)) !== -1) { ranges.push([idx, idx+needle.length]); i = idx + Math.max(1, needle.length); }
     }
-
-    const trimmedText = text.trim();
-    if (isSingleChineseChar(trimmedText) && raw.includes(trimmedText)) {
-      return '<mark>' + escapeHTML(text) + '</mark>';
-    }
-
+    if (isSingleChineseChar(text.trim()) && raw.includes(text.trim())) return '<mark>'+escapeHTML(text)+'</mark>';
     const { cnSubstrings, enWords, enAlnum } = extractTokensCNEN(raw);
-
-    for (const sub of cnSubstrings) {
-      if (!sub) continue;
-      let idx = text.indexOf(sub);
-      while (idx !== -1) {
-        ranges.push([idx, idx + sub.length]);
-        idx = text.indexOf(sub, idx + 1);
-      }
-    }
-
-    for (const w of enWords) {
-      if (!w) continue;
-      const re = new RegExp(`\\b${w.replace(/[.*+?^${}()|[\\]\\\\]/g,'\\$&')}\\b`, 'gi');
-      let m; while ((m = re.exec(text)) !== null) ranges.push([m.index, m.index + m[0].length]);
-    }
-
-    for (const h of enAlnum) {
-      if (!h) continue;
-      const lowerText = text.toLowerCase();
-      let start = 0, idx;
-      while ((idx = lowerText.indexOf(h, start)) !== -1) {
-        ranges.push([idx, idx + h.length]);
-        start = idx + Math.max(1, h.length);
-      }
-    }
-
-    if (cnSubstrings.length === 0 && enWords.length === 0 && enAlnum.length === 0 && raw) {
-      let start = 0, idx;
-      while ((idx = text.indexOf(raw, start)) !== -1) {
-        ranges.push([idx, idx + raw.length]);
-        start = idx + Math.max(1, raw.length);
-      }
-    }
-
+    for (const sub of cnSubstrings){ let idx=text.indexOf(sub); while(idx!==-1){ ranges.push([idx, idx+sub.length]); idx=text.indexOf(sub, idx+1);} }
+    for (const w of enWords){ const re=new RegExp(`\\b${w.replace(/[.*+?^${}()|[\\]\\\\]/g,'\\$&')}\\b`,'gi'); let m; while((m=re.exec(text))!==null){ ranges.push([m.index, m.index+m[0].length]); } }
+    for (const h of enAlnum){ const low=text.toLowerCase(); let i=0, idx; while((idx=low.indexOf(h,i))!==-1){ ranges.push([idx, idx+h.length]); i=idx+Math.max(1,h.length);} }
+    if (!cnSubstrings.length && !enWords.length && !enAlnum.length && raw){ let i=0, idx; while((idx=text.indexOf(raw,i))!==-1){ ranges.push([idx, idx+raw.length]); i=idx+Math.max(1,raw.length);} }
     if (!ranges.length) return escapeHTML(text);
-
-    ranges.sort((a,b) => a[0]-b[0] || a[1]-b[1]);
-    const merged = [];
-    let cur = ranges[0];
-    for (let i=1;i<ranges.length;i++){
-      const r = ranges[i];
-      if (r[0] <= cur[1]) cur[1] = Math.max(cur[1], r[1]);
-      else { merged.push(cur); cur = r; }
-    }
+    ranges.sort((a,b)=>a[0]-b[0]||a[1]-b[1]); const merged=[]; let cur=ranges[0];
+    for (let k=1;k<ranges.length;k++){ const r=ranges[k]; if (r[0]<=cur[1]) cur[1]=Math.max(cur[1],r[1]); else { merged.push(cur); cur=r; } }
     merged.push(cur);
-
-    let out = '', last = 0;
-    for (const [s,e] of merged){
-      out += escapeHTML(text.slice(last, s));
-      out += '<mark>' + escapeHTML(text.slice(s, e)) + '</mark>';
-      last = e;
-    }
-    out += escapeHTML(text.slice(last));
-    return out;
+    let out='', last=0; for (const [s,e] of merged){ out+=escapeHTML(text.slice(last,s)); out+='<mark>'+escapeHTML(text.slice(s,e))+'</mark>'; last=e; }
+    out+=escapeHTML(text.slice(last)); return out;
   }
 
-  // Auto-load Excel with diagnostics + timeout
+  // Load Excel with diagnostics + timeout
   (async function loadExcel(){
     resetUI();
+    const waitXLSX = () => new Promise(res=>{
+      (function check(){ if (window.XLSX) return res(); setTimeout(check, 50); })();
+    });
+    await waitXLSX();
+    if (typeof XLSX === 'undefined') { setStatus('❌ XLSX 库未加载（CDN 或本地均失败）', true); return; }
 
-    // 0) Library check
-    if (typeof XLSX === 'undefined') {
-      setStatus('❌ XLSX 库未加载。若被网络拦截，请下载 xlsx.full.min.js 放到 ./lib/ 并在 <head> 中改为：<script src="lib/xlsx.full.min.js"></script>', true);
-      return;
-    }
-
-    // 1) Fetch
     const excelURL = new URL(excelPath, location.href).toString();
     setStatus('正在加载 Excel… ' + excelURL);
-
     try {
       const controller = new AbortController();
-      const timer = setTimeout(()=>controller.abort(), 15000); // 15s timeout
-
+      const timer = setTimeout(()=>controller.abort(), 15000);
       const res = await fetch(excelURL, { cache: "no-store", signal: controller.signal });
       clearTimeout(timer);
-
-      if (!res.ok) {
-        setStatus(`加载 Excel 失败：HTTP ${res.status} - 请确认 ${excelURL} 是否存在（大小写敏感）`, true);
-        return;
-      }
-      const buf = await res.arrayBuffer();
-      const data = new Uint8Array(buf);
-
-      // 2) Parse
+      if (!res.ok) { setStatus(`加载 Excel 失败：HTTP ${res.status}（检查路径/大小写：${excelURL}）`, true); return; }
+      const data = new Uint8Array(await res.arrayBuffer());
       workbook = XLSX.read(data, { type: "array" });
       await afterWorkbookLoaded();
     } catch (e) {
-      if (e.name === 'AbortError') {
-        setStatus('加载 Excel 超时（>15秒）。请检查网络或文件路径。', true);
-      } else {
-        setStatus('加载 Excel 发生错误：' + e.message, true);
-      }
+      setStatus(e.name === 'AbortError' ? '加载 Excel 超时（>15秒）。检查网络或文件路径。' : ('加载 Excel 发生错误：' + e.message), true);
       console.error(e);
     }
   })();
 
   async function afterWorkbookLoaded(){
-    if (!workbook || !workbook.SheetNames || !workbook.SheetNames.length) {
-      setStatus('Excel 文件解析失败或没有工作表。', true);
-      return;
-    }
-
+    if (!workbook || !workbook.SheetNames || !workbook.SheetNames.length) { setStatus('Excel 解析失败或无工作表', true); return; }
     const props = workbook.Props || {};
     const lastModified = props.ModifiedDate || props.LastSaved || props.DateModified || props.CreatedDate;
-    if (lastModified) {
-      const d = new Date(lastModified);
-      updateTime.textContent = "最后更新时间：" + (isNaN(d) ? String(lastModified) : d.toLocaleString("zh-CN", { timeZone:"America/Los_Angeles" }));
-    } else {
-      updateTime.textContent = "最后更新时间：未知";
-    }
+    updateTime.textContent = "最后更新时间：" + (lastModified ? (isNaN(new Date(lastModified)) ? String(lastModified) : new Date(lastModified).toLocaleString("zh-CN",{timeZone:"America/Los_Angeles"})) : "未知");
 
     const limit = Math.min(5, workbook.SheetNames.length);
     sheetDataMap.clear();
-    for (let i = 0; i < limit; i++) {
+    for (let i=0;i<limit;i++){
       const sName = workbook.SheetNames[i];
       const sheet = workbook.Sheets[sName];
       const aoa = XLSX.utils.sheet_to_json(sheet, { header:1, raw:true, defval:'' });
       sheetDataMap.set(sName, aoa);
     }
-
-    setStatus(`表格加载完成（工作表：${workbook.SheetNames.slice(0,limit).join(', ')}）。可以开始查询。`);
-    searchBtn.disabled = true; // disabled until input has value
+    setStatus(`表格加载完成（工作表：${workbook.SheetNames.slice(0,limit).join(', ')}）。请输入姓名查询。`);
+    // keep button disabled until user types:
+    searchBtn.disabled = true;
   }
 
-  // Events
-  nameInput.addEventListener('keydown', e => {
-    if (e.key === 'Enter' && !searchBtn.disabled) doSearch();
-  });
-  nameInput.addEventListener('input', () => {
-    searchBtn.disabled = !(nameInput.value || '').trim();
-  });
+  // UI events
+  nameInput.addEventListener('input', () => { searchBtn.disabled = !(nameInput.value || '').trim(); });
+  nameInput.addEventListener('keydown', e => { if (e.key === 'Enter' && !searchBtn.disabled) doSearch(); });
   searchBtn.addEventListener('click', doSearch);
   showPayStatusBox.addEventListener('change', () => { if (!searchBtn.disabled) doSearch(); });
   copyBtn.addEventListener('click', copyResults);
 
-  // Pre-result notice helper (insert BEFORE results)
   function insertPreResultNotice(html){
-    const old = document.getElementById('preNote');
-    if (old) old.remove();
-    const note = document.createElement('div');
-    note.id = 'preNote';
-    note.className = 'empty-box multiline';
-    note.style.marginBottom = '10px';
-    note.innerHTML = html;
+    const old = document.getElementById('preNote'); if (old) old.remove();
+    const note = document.createElement('div'); note.id='preNote'; note.className='empty-box multiline'; note.style.marginBottom='10px'; note.innerHTML=html;
     listDiv.parentNode.insertBefore(note, listDiv);
   }
 
-  // Search
   function doSearch(){
     if (sheetDataMap.size === 0) { setStatus("Excel 文件未加载。", true); return; }
     const key = (nameInput.value || "").trim();
     if (!key) { setStatus("请输入您的接龙名字。", true); return; }
 
     const results = [];
-    // 列映射：A=0(到货状态), B=1(支付状态), D=3(客户姓名), E=4(接龙内容), F=5(金额)
     for (const [_, aoa] of sheetDataMap) {
-      for (let r = 0; r < aoa.length; r++) {
+      for (let r=0; r<aoa.length; r++) {
         const row = aoa[r]; if (!row) continue;
         const dVal = String((row[3] ?? '')).trim();
-        if (!dVal && r === 0) continue; // 表头
+        if (!dVal && r === 0) continue; // header
         if (matchByRule(key, dVal)) {
-          const aRaw = (row[0] ?? '');
-          const aDisplay = String(aRaw).trim() === '' ? '暂未到货' : String(aRaw).trim();
-          const bRaw = (row[1] ?? '');
-          const bDisplay = String(bRaw).trim() === '' ? '未支付' : String(bRaw).trim();
+          const aDisp = String(row[0] ?? '').trim() || '暂未到货';
+          const bDisp = String(row[1] ?? '').trim() || '未支付';
           const e = row[4] ?? '';
           const f = formatUSD(row[5]);
-
-          results.push({ a:aDisplay, b:bDisplay, d:dVal, dHTML: highlightMatches(key, dVal), e, f });
+          results.push({ a:aDisp, b:bDisp, d:dVal, dHTML:highlightMatches(key, dVal), e, f });
         }
       }
     }
-
     renderResults(results, key);
   }
 
-  function formatUSD(val){
-    let num = null;
-    if (typeof val === 'number') num = val;
+  function formatUSD(v){
+    let n = null;
+    if (typeof v === 'number') n = v;
     else {
-      const s = String(val ?? '').trim().replace(/,/g, '');
-      if (s && !isNaN(s)) num = Number(s);
+      const s = String(v ?? '').trim().replace(/,/g,'');
+      if (s && !isNaN(s)) n = Number(s);
     }
-    if (num === null || !isFinite(num)) return String(val ?? '');
-    return new Intl.NumberFormat('en-US', { style:'currency', currency:'USD' }).format(num);
+    if (n === null || !isFinite(n)) return String(v ?? '');
+    return new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'}).format(n);
   }
 
-  // Render
   function renderResults(rows, key){
     countBadge.textContent = rows.length;
     listDiv.innerHTML = '';
     copyBtn.disabled = rows.length === 0;
-    const showPayStatus = showPayStatusBox.checked;
 
-    const old = document.getElementById('preNote');
-    if (old) old.remove();
+    const old = document.getElementById('preNote'); if (old) old.remove();
 
     if (!rows.length) {
       setStatus(`没有找到 "${key}" 的记录。`, true);
-      insertPreResultNotice(
-`哈哈这位客官，您可能是<b>“买了个寂寞”</b>😂
+      insertPreResultNotice(`哈哈这位客官，您可能是<b>“买了个寂寞”</b>😂
 库存小二刚翻遍小本本，发现您最近没有下单哦～
 
 不急不急～客栈里好物多多，您可以先去现货区或其他接龙摊位逛逛，
 说不定下一眼缘分的宝贝就在等您呢✨
 
-客官请随意，喜欢哪个尽管拍，小二随时为您打包～📦💨`
-      );
+客官请随意，喜欢哪个尽管拍，小二随时为您打包～📦💨`);
       return;
     }
 
     if (rows.length >= 2) {
-      insertPreResultNotice(
-`亲爱的客官们，最近看到您囤货的热情，小二感动得眼泪都快掉进打包袋里了😭
+      insertPreResultNotice(`亲爱的客官们，最近看到您囤货的热情，小二感动得眼泪都快掉进打包袋里了😭
 感谢您一路支持、信任与厚爱！
 您的一次次下单，都是对小二继续努力的最大鼓励❤️
-祝您日日有好物，件件都喜欢！`
-      );
+祝您日日有好物，件件都喜欢！`);
     }
 
     setStatus(`找到 ${rows.length} 条记录。`);
 
+    const showPayStatus = $('showPayStatus').checked;
     const table = document.createElement('table');
     table.innerHTML = `
       <thead>
@@ -559,86 +322,55 @@ bayareaselect 绿植🍃头像
 
     rows.forEach((r, i) => {
       const tr = document.createElement('tr');
-      const cell = (txt) => { const td = document.createElement('td'); td.textContent = txt; tr.appendChild(td); };
-      const cellHTML = (html) => { const td = document.createElement('td'); td.innerHTML = html; tr.appendChild(td); };
-
-      cell(i+1);
-      cell(r.a);
-      if (showPayStatus) cell(r.b === '' ? '未支付' : r.b);
-      cellHTML(r.dHTML);
+      const td = (txt) => { const d=document.createElement('td'); d.textContent=txt; tr.appendChild(d); };
+      const tdH = (html) => { const d=document.createElement('td'); d.innerHTML=html; tr.appendChild(d); };
+      td(i+1); td(r.a); if (showPayStatus) td(r.b === '' ? '未支付' : r.b); tdH(r.dHTML);
       tb.appendChild(tr);
 
-      const tr2 = document.createElement('tr');
-      tr2.className = 'detail-row';
-      const td = document.createElement('td');
-      td.colSpan = showPayStatus ? 4 : 3;
-
-      const wrap = document.createElement('div');
-      wrap.className = 'detail-meta';
-      const eDiv = document.createElement('div');
-      const fDiv = document.createElement('div');
+      const tr2 = document.createElement('tr'); tr2.className='detail-row';
+      const d = document.createElement('td'); d.colSpan = showPayStatus ? 4 : 3;
+      const wrap = document.createElement('div'); wrap.className='detail-meta';
+      const eDiv = document.createElement('div'); const fDiv = document.createElement('div');
       eDiv.innerHTML = `<b>接龙内容：</b>${escapeHTML(String(r.e ?? ''))}`;
       fDiv.innerHTML = `<b>应付金额（USD）：</b>${escapeHTML(String(r.f ?? ''))}`;
-      wrap.appendChild(eDiv);
-      wrap.appendChild(fDiv);
-
-      td.appendChild(wrap);
-      tr2.appendChild(td);
-      tb.appendChild(tr2);
+      wrap.appendChild(eDiv); wrap.appendChild(fDiv);
+      d.appendChild(wrap); tr2.appendChild(d); tb.appendChild(tr2);
     });
 
-    table.appendChild(tb);
-    listDiv.appendChild(table);
+    table.appendChild(tb); listDiv.appendChild(table);
     copyBtn.disabled = false;
   }
 
-  // Copy TSV
   async function copyResults(){
-    const showPayStatus = showPayStatusBox.checked;
-    const header = ['序号','到货状态'];
-    if (showPayStatus) header.push('支付状态');
+    const showPayStatus = $('showPayStatus').checked;
+    const header = ['序号','到货状态']; if (showPayStatus) header.push('支付状态');
     header.push('客户姓名','接龙内容','应付金额（USD）');
 
-    const rows = [];
     const key = (nameInput.value || "").trim();
     const res = [];
     for (const [_, aoa] of sheetDataMap) {
-      for (let r = 0; r < aoa.length; r++) {
+      for (let r=0; r<aoa.length; r++) {
         const row = aoa[r]; if (!row) continue;
         const dVal = String((row[3] ?? '')).trim();
         if (!dVal && r === 0) continue;
         if (matchByRule(key, dVal)) {
-          const aRaw = (row[0] ?? '');
-          const aDisplay = String(aRaw).trim() === '' ? '暂未到货' : String(aRaw).trim();
-          const bRaw = (row[1] ?? '');
-          const bDisplay = String(bRaw).trim() === '' ? '未支付' : String(bRaw).trim();
-          const e = row[4] ?? '';
-          const f = formatUSD(row[5]);
-          res.push({ a:aDisplay, b:bDisplay, d:dVal, e, f });
+          const aDisp = String(row[0] ?? '').trim() || '暂未到货';
+          const bDisp = String(row[1] ?? '').trim() || '未支付';
+          const e = row[4] ?? ''; const f = formatUSD(row[5]);
+          res.push({ a:aDisp, b:bDisp, d:dVal, e, f });
         }
       }
     }
-    res.forEach((r, i) => {
-      const row = [i+1, r.a];
-      if (showPayStatus) row.push(r.b);
-      row.push(r.d, r.e, r.f);
-      rows.push(row.join('\t'));
-    });
-
-    const text = header.join('\t') + '\n' + rows.join('\n');
-    try {
-      await navigator.clipboard.writeText(text);
-      setStatus("结果已复制到剪贴板。", false, true);
-    } catch {
-      setStatus("复制失败，请手动选择复制。", true);
-    }
+    const lines = res.map((r,i)=> [i+1, r.a, ...(showPayStatus?[r.b]:[]), r.d, r.e, r.f].join('\t'));
+    const text = header.join('\t') + '\n' + lines.join('\n');
+    try { await navigator.clipboard.writeText(text); setStatus("结果已复制到剪贴板。", false, true); }
+    catch { setStatus("复制失败，请手动选择复制。", true); }
   }
 
   function setStatus(msg, isError=false, good=false){
     statusDiv.textContent = msg;
-    statusDiv.className = isError ? 'error' : good ? 'good' : 'muted';
+    statusDiv.className = isError ? 'error' : (good ? 'good' : 'muted');
   }
-
   function resetUI(){
     workbook = null; sheetDataMap.clear();
     listDiv.innerHTML = ''; countBadge.textContent = '0';
@@ -649,6 +381,8 @@ bayareaselect 绿植🍃头像
 </script>
 </body>
 </html>
+
+
 
 
 
