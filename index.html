@@ -5,50 +5,144 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>一一团近期接龙到货情况</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
 <style>
-  .multiline { white-space: pre-line; }
-  :root { --bg:#f6f7fb; --card:#fff; --muted:#666; --accent:#165DFF; --ok:#19be6b; --danger:#fa5151; --hl:#fff2a8; }
-  body { margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Noto Sans SC",sans-serif; background:var(--bg); color:#222; }
-  .container { max-width:980px; margin:32px auto; padding:0 16px; }
+/* === Kawaii Pink Theme === */
+.multiline { white-space: pre-line; }
 
-  .banner { text-align:center; margin-bottom:16px; }
-  .banner img { max-width:100%; height:auto; border-radius:12px; box-shadow:0 4px 12px rgba(0,0,0,.08); object-fit:contain; }
+/* Pastel pink palette */
+:root {
+  --bg: #fff6fb;           /* very light pink */
+  --bg-accent: #ffeef6;    /* section tint */
+  --card: #ffffff;         /* cards stay white */
+  --muted: #7a6d78;        /* soft gray-lilac text */
+  --accent: #ff66a1;       /* primary pink */
+  --accent-2: #ff8bbb;     /* lighter pink for gradients */
+  --ok: #3cc88f;           /* mint ok */
+  --danger: #ff5d7a;       /* strawberry danger */
+  --hl: #ffe5f0;           /* blush highlighter */
+  --line: #ffd6e6;         /* light divider */
+  --shadow: 0 10px 30px rgba(255, 102, 161, 0.12);
+}
 
-  .card { background:var(--card); border-radius:16px; box-shadow:0 6px 20px rgba(0,0,0,.06); padding:20px; margin:16px 0; }
-  h1 { font-size:24px; margin:0 0 8px; }
-  .muted { color:var(--muted); font-size:14px; }
-  .row { display:flex; flex-wrap:wrap; gap:12px; align-items:center; }
-  label { font-weight:600; }
-  input[type="text"] { padding:10px 12px; border:1px solid #e6e6e6; border-radius:10px; background:#fafafa; min-width:220px; }
-  button { background:var(--accent); color:#fff; border:none; border-radius:10px; padding:10px 14px; cursor:pointer; }
-  button.secondary { background:#333; }
-  button:disabled { opacity:.6; cursor:not-allowed; }
-  .badge { display:inline-block; padding:2px 8px; border-radius:999px; font-size:12px; background:#eee; }
+body {
+  margin: 0;
+  font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,
+               "Helvetica Neue",Arial,"Noto Sans SC",sans-serif;
+  color: #3a2c36;
+  background:
+    radial-gradient(1200px 600px at 10% -10%, #fff0f7 10%, transparent 60%),
+    radial-gradient(1200px 600px at 110% 10%, #ffeef6 10%, transparent 60%),
+    var(--bg);
+}
 
-  /* Table (mobile-friendly, two-line per record) */
-  table { width:100%; border-collapse:collapse; margin-top:10px; table-layout:auto; }
-  th, td { text-align:left; padding:10px; border-bottom:1px solid #f0f0f0; vertical-align:top; }
-  th { background:#fafafa; }
-  td, th { word-break:break-word; overflow-wrap:break-word; }
-  .detail-row td { background:#fafafa; font-size:14px; line-height:1.5; }
-  .detail-meta { display:flex; gap:16px; flex-wrap:wrap; }
-  .detail-meta b { color:#333; }
+.container { max-width: 980px; margin: 32px auto; padding: 0 16px; }
 
-  /* highlight */
-  mark { background: var(--hl); padding:0 .15em; border-radius:.2em; }
+/* Banner */
+.banner { text-align: center; margin-bottom: 16px; }
+.banner img {
+  max-width: 100%; height: auto;
+  border-radius: 18px;
+  box-shadow: var(--shadow);
+  object-fit: contain;
+}
 
-  .error { color:var(--danger); }
-  .good { color:var(--ok); }
+/* Cards */
+.card {
+  background: var(--card);
+  border-radius: 20px;
+  box-shadow: var(--shadow);
+  padding: 22px;
+  margin: 18px 0;
+  border: 1px solid var(--line);
+}
+h1 {
+  font-size: 26px; margin: 0 0 8px;
+  letter-spacing: .3px;
+}
+h1::after { content: "  ♡"; color: var(--accent); font-weight: 700; }
+.muted { color: var(--muted); font-size: 14px; }
 
-  /* Empty result message */
-  .empty-box { background:#fff; border:1px dashed #ddd; border-radius:12px; padding:16px; color:#333; }
+.row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+label { font-weight: 600; }
 
-  /* Mobile tweaks */
-  @media (max-width: 600px) {
-    body { font-size:15px; }
-    th, td { padding:8px; }
-    .detail-row td { font-size:13px; }
-  }
+/* Inputs */
+input[type="text"] {
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #fff;
+  min-width: 240px;
+  transition: box-shadow .2s ease, border-color .2s ease;
+}
+input[type="text"]:focus {
+  outline: none;
+  border-color: var(--accent-2);
+  box-shadow: 0 0 0 4px rgba(255, 136, 187, .18);
+}
+
+/* Buttons */
+button {
+  background: linear-gradient(180deg, var(--accent-2), var(--accent));
+  color: #fff; border: none; border-radius: 999px;
+  padding: 10px 16px; cursor: pointer;
+  box-shadow: 0 6px 14px rgba(255, 102, 161, .2);
+  transition: transform .08s ease, box-shadow .2s ease, opacity .2s ease;
+}
+button:hover { transform: translateY(-1px); box-shadow: 0 10px 18px rgba(255, 102, 161, .25); }
+button:active { transform: translateY(0); }
+button.secondary { background: linear-gradient(180deg, #ffd9e8, #ffb7d5); color: #7a3a55; }
+button:disabled { opacity: .6; cursor: not-allowed; }
+
+/* Badge */
+.badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  background: #ffe0ef;
+  color: #7a3a55;
+  border: 1px solid var(--line);
+}
+
+/* Table */
+table {
+  width: 100%; border-collapse: collapse; margin-top: 10px;
+  table-layout: auto; overflow: hidden; border-radius: 14px; border: 1px solid var(--line);
+}
+th, td { text-align: left; padding: 12px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { background: linear-gradient(180deg, #fff5fa, #ffeaf3); color: #7a3a55; font-weight: 700; }
+.detail-row td { background: #fff9fc; font-size: 14px; line-height: 1.6; }
+.detail-meta { display: flex; gap: 18px; flex-wrap: wrap; }
+.detail-meta b { color: #5c3c4b; }
+
+/* Highlight */
+mark {
+  background: var(--hl);
+  padding: 0 .25em; border-radius: .35em;
+  box-shadow: inset 0 -10px 0 rgba(255, 214, 230, .45);
+}
+
+/* Status colors */
+.error { color: var(--danger); }
+.good { color: var(--ok); }
+
+/* Empty/result notes */
+.empty-box {
+  background:
+    linear-gradient(135deg, rgba(255, 240, 247, .8) 0 10px, rgba(255,255,255,.8) 10px 20px) repeat;
+  background-size: 20px 20px;
+  border: 1px dashed #ffc1d7; border-radius: 16px;
+  padding: 16px; color: #5c3c4b;
+}
+.empty-box::before { content: "🛍️✨ "; margin-right: 6px; }
+
+/* Mobile */
+@media (max-width: 600px) {
+  body { font-size: 15px; }
+  th, td { padding: 10px; }
+  .detail-row td { font-size: 13px; }
+}
 </style>
 </head>
 <body>
@@ -124,7 +218,6 @@ bayareaselect 绿植🍃头像
 9. gelato pique已陆续从日本寄出，预计下两周左右到齐。  
 
 10. labubu供应商已发货，预计下两周内陆续到货。
-
     </div>
   </div>
 </div>
@@ -157,10 +250,7 @@ bayareaselect 绿植🍃头像
 
   // Helpers
   function escapeHTML(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
-
-  function isSingleChineseChar(str){
-    return /^[\u4e00-\u9fff]$/.test(str);
-  }
+  function isSingleChineseChar(str){ return /^[\u4e00-\u9fff]$/.test(str); }
 
   // Extract tokens from input
   function extractTokensCNEN(input){
@@ -384,6 +474,18 @@ bayareaselect 绿植🍃头像
   showPayStatusBox.addEventListener('change', () => { if (!searchBtn.disabled) doSearch(); });
   copyBtn.addEventListener('click', copyResults);
 
+  // Pre-result notice helper (insert BEFORE results)
+  function insertPreResultNotice(html){
+    const old = document.getElementById('preNote');
+    if (old) old.remove();
+    const note = document.createElement('div');
+    note.id = 'preNote';
+    note.className = 'empty-box multiline';
+    note.style.marginBottom = '10px';
+    note.innerHTML = html;
+    listDiv.parentNode.insertBefore(note, listDiv);
+  }
+
   // Search
   function doSearch(){
     if (sheetDataMap.size === 0) { setStatus("Excel 文件未加载。", true); return; }
@@ -400,10 +502,8 @@ bayareaselect 绿植🍃头像
         if (matchByRule(key, dVal)) {
           const aRaw = (row[0] ?? '');
           const aDisplay = String(aRaw).trim() === '' ? '暂未到货' : String(aRaw).trim();
-
           const bRaw = (row[1] ?? '');
           const bDisplay = String(bRaw).trim() === '' ? '未支付' : String(bRaw).trim();
-
           const e = row[4] ?? '';
           const f = formatUSD(row[5]);
 
@@ -433,36 +533,20 @@ bayareaselect 绿植🍃头像
     return new Intl.NumberFormat('en-US', { style:'currency', currency:'USD' }).format(num);
   }
 
-  // Render：主行（序号/到货/可选支付/姓名） + 详情行（接龙内容/金额，合并整行）
-  function insertPreResultNotice(html){
-  // remove old
-  const old = document.getElementById('preNote');
-  if (old) old.remove();
-  // insert new before the results list container
-  const note = document.createElement('div');
-  note.id = 'preNote';
-  note.className = 'empty-box multiline';
-  note.style.marginBottom = '10px';
-  note.innerHTML = html;
-  listDiv.parentNode.insertBefore(note, listDiv);
-}
-
-  
+  // Render
   function renderResults(rows, key){
-  // reset counters + clear previous list
-  countBadge.textContent = rows.length;
-  listDiv.innerHTML = '';
-  copyBtn.disabled = rows.length === 0;
-  const showPayStatus = showPayStatusBox.checked;
+    countBadge.textContent = rows.length;
+    listDiv.innerHTML = '';
+    copyBtn.disabled = rows.length === 0;
+    const showPayStatus = showPayStatusBox.checked;
 
-  // always clear any prior pre-note
-  const old = document.getElementById('preNote');
-  if (old) old.remove();
+    // clear prior pre-note
+    const old = document.getElementById('preNote');
+    if (old) old.remove();
 
-  // 0 results → show empty message BEFORE result section
-  if (!rows.length) {
-    setStatus(`没有找到 "${key}" 的记录。`, true);
-    insertPreResultNotice(
+    if (!rows.length) {
+      setStatus(`没有找到 "${key}" 的记录。`, true);
+      insertPreResultNotice(
 `哈哈这位客官，您可能是<b>“买了个寂寞”</b>😂
 库存小二刚翻遍小本本，发现您最近没有下单哦～
 
@@ -470,72 +554,18 @@ bayareaselect 绿植🍃头像
 说不定下一眼缘分的宝贝就在等您呢✨
 
 客官请随意，喜欢哪个尽管拍，小二随时为您打包～📦💨`
-    );
-    return;
-  }
+      );
+      return;
+    }
 
-  // 2+ results (no need to be same name) → thank-you note BEFORE result section
-  if (rows.length >= 2) {
-    insertPreResultNotice(
+    if (rows.length >= 2) {
+      insertPreResultNotice(
 `亲爱的客官们，最近看到您囤货的热情，小二感动得眼泪都快掉进打包袋里了😭
 感谢您一路支持、信任与厚爱！
 您的一次次下单，都是对小二继续努力的最大鼓励❤️
 祝您日日有好物，件件都喜欢！`
-    );
-  }
-
-  setStatus(`找到 ${rows.length} 条记录。`);
-
-  // build table
-  const table = document.createElement('table');
-  table.innerHTML = `
-    <thead>
-      <tr>
-        <th style="width:64px;">序号</th>
-        <th style="width:120px;">到货状态</th>
-        ${showPayStatus ? '<th style="width:120px;">支付状态</th>' : ''}
-        <th>客户姓名</th>
-      </tr>
-    </thead>`;
-  const tb = document.createElement('tbody');
-
-  rows.forEach((r, i) => {
-    // main row
-    const tr = document.createElement('tr');
-    const cell = (txt) => { const td = document.createElement('td'); td.textContent = txt; tr.appendChild(td); };
-    const cellHTML = (html) => { const td = document.createElement('td'); td.innerHTML = html; tr.appendChild(td); };
-
-    cell(i+1);
-    cell(r.a);
-    if (showPayStatus) cell(r.b === '' ? '未支付' : r.b);
-    cellHTML(r.dHTML);
-    tb.appendChild(tr);
-
-    // detail row (E, F)
-    const tr2 = document.createElement('tr');
-    tr2.className = 'detail-row';
-    const td = document.createElement('td');
-    td.colSpan = showPayStatus ? 4 : 3;
-
-    const wrap = document.createElement('div');
-    wrap.className = 'detail-meta';
-    const eDiv = document.createElement('div');
-    const fDiv = document.createElement('div');
-    eDiv.innerHTML = `<b>接龙内容：</b>${escapeHTML(String(r.e ?? ''))}`;
-    fDiv.innerHTML = `<b>应付金额（USD）：</b>${escapeHTML(String(r.f ?? ''))}`;
-    wrap.appendChild(eDiv);
-    wrap.appendChild(fDiv);
-
-    td.appendChild(wrap);
-    tr2.appendChild(td);
-    tb.appendChild(tr2);
-  });
-
-  table.appendChild(tb);
-  listDiv.appendChild(table);
-  copyBtn.disabled = false;
-}
-
+      );
+    }
 
     setStatus(`找到 ${rows.length} 条记录。`);
 
@@ -552,7 +582,7 @@ bayareaselect 绿植🍃头像
     const tb = document.createElement('tbody');
 
     rows.forEach((r, i) => {
-      // 主行
+      // main row
       const tr = document.createElement('tr');
       const cell = (txt) => { const td = document.createElement('td'); td.textContent = txt; tr.appendChild(td); };
       const cellHTML = (html) => { const td = document.createElement('td'); td.innerHTML = html; tr.appendChild(td); };
@@ -563,13 +593,11 @@ bayareaselect 绿植🍃头像
       cellHTML(r.dHTML);
       tb.appendChild(tr);
 
-      // 详情行（E, F）
+      // detail row (E, F)
       const tr2 = document.createElement('tr');
       tr2.className = 'detail-row';
       const td = document.createElement('td');
-
-      const colSpan = showPayStatus ? 4 : 3;
-      td.colSpan = colSpan;
+      td.colSpan = showPayStatus ? 4 : 3;
 
       const wrap = document.createElement('div');
       wrap.className = 'detail-meta';
@@ -587,26 +615,10 @@ bayareaselect 绿植🍃头像
 
     table.appendChild(tb);
     listDiv.appendChild(table);
-
-    // If 2+ results and all belong to the same user name, show the thank-you note
-    if (rows.length >= 2) {
-      const uniqueNames = new Set(rows.map(r => String(r.d || '').trim()));
-      if (uniqueNames.size === 1) {
-        const note = document.createElement('div');
-        note.className = 'empty-box multiline';
-        note.style.marginTop = '12px';
-        note.innerHTML = `亲爱的客官们，最近看到您囤货的热情，小二感动得眼泪都快掉进打包袋里了😭
-感谢您一路支持、信任与厚爱！
-您的每一次下单，都是对小二继续努力的最大鼓励❤️
-祝您日日有好物，件件都喜欢！`;
-        listDiv.appendChild(note);
-      }
-    }
-
     copyBtn.disabled = false;
   }
 
-  // 复制 TSV（包含 E、F 列）
+  // Copy TSV
   async function copyResults(){
     const showPayStatus = showPayStatusBox.checked;
     const header = ['序号','到货状态'];
@@ -663,6 +675,8 @@ bayareaselect 绿植🍃头像
 </script>
 </body>
 </html>
+
+
 
 
 
