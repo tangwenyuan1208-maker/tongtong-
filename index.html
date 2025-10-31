@@ -434,27 +434,108 @@ bayareaselect 绿植🍃头像
   }
 
   // Render：主行（序号/到货/可选支付/姓名） + 详情行（接龙内容/金额，合并整行）
+  function insertPreResultNotice(html){
+  // remove old
+  const old = document.getElementById('preNote');
+  if (old) old.remove();
+  // insert new before the results list container
+  const note = document.createElement('div');
+  note.id = 'preNote';
+  note.className = 'empty-box multiline';
+  note.style.marginBottom = '10px';
+  note.innerHTML = html;
+  listDiv.parentNode.insertBefore(note, listDiv);
+}
+
+  
   function renderResults(rows, key){
-    countBadge.textContent = rows.length;
-    listDiv.innerHTML = '';
-    const showPayStatus = showPayStatusBox.checked;
+  // reset counters + clear previous list
+  countBadge.textContent = rows.length;
+  listDiv.innerHTML = '';
+  copyBtn.disabled = rows.length === 0;
+  const showPayStatus = showPayStatusBox.checked;
 
-    if (!rows.length) {
-      setStatus(`没有找到 "${key}" 的记录。`, true);
-      copyBtn.disabled = true;
+  // always clear any prior pre-note
+  const old = document.getElementById('preNote');
+  if (old) old.remove();
 
-      const empty = document.createElement('div');
-      empty.className = 'empty-box multiline';
-      empty.innerHTML = `哈哈这位客官，您可能是<b>“买了个寂寞”</b>😂
+  // 0 results → show empty message BEFORE result section
+  if (!rows.length) {
+    setStatus(`没有找到 "${key}" 的记录。`, true);
+    insertPreResultNotice(
+`哈哈这位客官，您可能是<b>“买了个寂寞”</b>😂
 库存小二刚翻遍小本本，发现您最近没有下单哦～
 
 不急不急～客栈里好物多多，您可以先去现货区或其他接龙摊位逛逛，
 说不定下一眼缘分的宝贝就在等您呢✨
 
-客官请随意，喜欢哪个尽管拍，小二随时为您打包～📦💨`;
-      listDiv.appendChild(empty);
-      return;
-    }
+客官请随意，喜欢哪个尽管拍，小二随时为您打包～📦💨`
+    );
+    return;
+  }
+
+  // 2+ results (no need to be same name) → thank-you note BEFORE result section
+  if (rows.length >= 2) {
+    insertPreResultNotice(
+`亲爱的客官们，最近看到您囤货的热情，小二感动得眼泪都快掉进打包袋里了😭
+感谢您一路支持、信任与厚爱！
+您的一次次下单，都是对小二继续努力的最大鼓励❤️
+祝您日日有好物，件件都喜欢！`
+    );
+  }
+
+  setStatus(`找到 ${rows.length} 条记录。`);
+
+  // build table
+  const table = document.createElement('table');
+  table.innerHTML = `
+    <thead>
+      <tr>
+        <th style="width:64px;">序号</th>
+        <th style="width:120px;">到货状态</th>
+        ${showPayStatus ? '<th style="width:120px;">支付状态</th>' : ''}
+        <th>客户姓名</th>
+      </tr>
+    </thead>`;
+  const tb = document.createElement('tbody');
+
+  rows.forEach((r, i) => {
+    // main row
+    const tr = document.createElement('tr');
+    const cell = (txt) => { const td = document.createElement('td'); td.textContent = txt; tr.appendChild(td); };
+    const cellHTML = (html) => { const td = document.createElement('td'); td.innerHTML = html; tr.appendChild(td); };
+
+    cell(i+1);
+    cell(r.a);
+    if (showPayStatus) cell(r.b === '' ? '未支付' : r.b);
+    cellHTML(r.dHTML);
+    tb.appendChild(tr);
+
+    // detail row (E, F)
+    const tr2 = document.createElement('tr');
+    tr2.className = 'detail-row';
+    const td = document.createElement('td');
+    td.colSpan = showPayStatus ? 4 : 3;
+
+    const wrap = document.createElement('div');
+    wrap.className = 'detail-meta';
+    const eDiv = document.createElement('div');
+    const fDiv = document.createElement('div');
+    eDiv.innerHTML = `<b>接龙内容：</b>${escapeHTML(String(r.e ?? ''))}`;
+    fDiv.innerHTML = `<b>应付金额（USD）：</b>${escapeHTML(String(r.f ?? ''))}`;
+    wrap.appendChild(eDiv);
+    wrap.appendChild(fDiv);
+
+    td.appendChild(wrap);
+    tr2.appendChild(td);
+    tb.appendChild(tr2);
+  });
+
+  table.appendChild(tb);
+  listDiv.appendChild(table);
+  copyBtn.disabled = false;
+}
+
 
     setStatus(`找到 ${rows.length} 条记录。`);
 
@@ -582,6 +663,7 @@ bayareaselect 绿植🍃头像
 </script>
 </body>
 </html>
+
 
 
 
