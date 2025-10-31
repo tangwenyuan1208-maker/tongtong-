@@ -146,6 +146,178 @@ bayareaselect 绿植🍃头像
   const countBadge = $('count');
   const updateTime = $('updateTime');
 
+  // Show JS errors in status
+  window.addEventListener('error', (ev) => {
+    try {
+      const msg = (ev && ev.message) ? ev.message : String(ev);
+      statusDiv.textContent = '脚本错误：' + msg;
+      statusDiv.className = 'error';
+    } catch {}
+  });
+
+  // Helpers
+  function escapeHTML(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+  function isSingleChineseChar(str){
+    return /^[\u4e00-\u9fff]$/.test(str);
+  }
+
+  // Extract tokens from input
+  function extractTokensCNEN(input){
+    const cnSeq = (input.match(/[\u4e00-\u9fff]+/g) || []);
+    const cnSubstrings = [];
+    for (const seq of cnSeq) {
+      if (seq.length >= 2) {
+        for (let L = 2; L <= seq.length; L++) {
+          for (let i = 0; i + L <= seq.length; i++) {
+            cnSubstrings.push(seq.slice(i, i+L));
+          }
+        }
+      }
+    }
+    const enWords = (input.match(/[A-Za-z]+/g) || []).map(w => w.toLowerCase());
+    const enAlnum = (input.match(/(?:[A-Za-z]+[0-9]+|[0-9]+[A-Za-z]+)[A-Za-z0-9]*/g) || []).map(s => s.toLowerCase());
+    return { cnSubstrings, enWords, enAlnum };
+  }
+
+  // Matching rule
+  function matchByRule(userInput, targetText){
+    if (!userInput || !targetText) return false;
+    const t = String(targetText);
+    const tl = t.toLowerCase();
+
+    // Quick path: alphanumeric handle (e.g., egg57)
+    const rawHandle = (userInput || "").trim();
+    if (/[A-Za-z]\d|\d[A-Za-z]/.test(rawHandle)) {
+      if (tl.indexOf(rawHandle.toLowerCase()) !== -1) return true;
+    }
+
+    // Single Chinese char special case
+    const trimmedTarget = t.trim();
+    if (isSingleChineseChar(trimmedTarget) && userInput.includes(trimmedTarget)) {
+      return true;
+    }
+
+    const { cnSubstrings, enWords, enAlnum } = extractTokensCNEN(userInput);
+
+    // Chinese ≥2 substring
+    for (const sub of cnSubstrings) {
+      if (sub && t.includes(sub)) return true;
+    }
+
+    // English whole word (case-insensitive)
+    for (const w of enWords) {
+      if (!w) continue;
+      const re = new RegExp(`\\b${w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
+      if (re.test(tl)) return true;
+    }
+
+    // Alphanumeric handle (case-insensitive substring)
+    for (const h of enAlnum) {
+      if (!h) continue;
+      if (tl.indexOf(h) !== -1) return true;
+    }
+
+    // Special-char fallback
+    if (cnSubstrings.length === 0 && enWords.length === 0 && enAlnum.length === 0) {
+      const raw = userInput.trim();
+      if (raw && t.includes(raw)) return true;
+    }
+
+    return false;
+  }
+
+  // Highlight
+  function highlightMatches(userInput, targetText){
+    const text = String(targetText || '');
+    if (!userInput || !text) return escapeHTML(text);
+
+    const raw = (userInput || "").trim();
+    const ranges = [];
+
+    // Quick path: alphanumeric handle highlight
+    if (/[A-Za-z]\d|\d[A-Za-z]/.test(raw)) {
+      const lowerText = text.toLowerCase();
+      const needle = raw.toLowerCase();
+      let start = 0, idx;
+      while ((idx = lowerText.indexOf(needle, start)) !== -1) {
+        ranges.push([idx, idx + needle.length]);
+        start = idx + Math.max(1, needle.length);
+      }
+    }
+
+    // Single Chinese char special case
+    const trimmedText = text.trim();
+    if (isSingleChineseChar(trimmedText) && raw.includes(trimmedText)) {
+      return '<mark>' + escapeHTML(text) + '</mark>';
+    }
+
+    const { cnSubstrings, enWords, enAlnum } = extractTokensCNEN(raw);
+
+    // Chinese ≥2 substring
+    for (const sub of cnSubstrings) {
+      if (!sub) continue;
+      let idx = text.indexOf(sub);
+      while (idx !== -1) {
+        ranges.push([idx, idx + sub.length]);
+        idx = text.indexOf(sub, idx + 1);
+      }
+    }
+
+    // English whole word
+    for (const w of enWords) {
+      if (!w) continue;
+      const re = new RegExp(`\\b${w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'gi');
+      let m;
+      while ((m = re.exec(text)) !== null) {
+        ranges.push([m.index, m.index + m[0].length]);
+      }
+    }
+
+    // Alphanumeric handles
+    for (const h of enAlnum) {
+      if (!h) continue;
+      const lowerText = text.toLowerCase();
+      let start = 0, idx;
+      while ((idx = lowerText.indexOf(h, start)) !== -1) {
+        ranges.push([idx, idx + h.length]);
+        start = idx + Math.max(1, h.length);
+      }
+    }
+
+    // Special-char fallback
+    if (cnSubstrings.length === 0 && enWords.length === 0 && enAlnum.length === 0 && raw) {
+      let start = 0, idx;
+      while ((idx = text.indexOf(raw, start)) !== -1) {
+        ranges.push([idx, idx + raw.length]);
+        start = idx + Math.max(1, raw.length);
+      }
+    }
+
+    if (!ranges.length) return escapeHTML(text);
+
+    // Merge ranges
+    ranges.sort((a,b) => a[0]-b[0] || a[1]-b[1]);
+    const merged = [];
+    let cur = ranges[0];
+    for (let i=1; i<ranges.length; i++){
+      const r = ranges[i];
+      if (r[0] <= cur[1]) cur[1] = Math.max(cur[1], r[1]);
+      else { merged.push(cur); cur = r; }
+    }
+    merged.push(cur);
+
+    // Render
+    let out = '', last = 0;
+    for (const [s,e] of merged){
+      out += escapeHTML(text.slice(last, s));
+      out += '<mark>' + escapeHTML(text.slice(s, e)) + '</mark>';
+      last = e;
+    }
+    out += escapeHTML(text.slice(last));
+    return out;
+  }
+
   // Auto-load Excel
   (async function loadExcel(){
     resetUI();
@@ -209,279 +381,8 @@ bayareaselect 绿植🍃头像
     searchBtn.disabled = !(nameInput.value || '').trim();
   });
   searchBtn.addEventListener('click', doSearch);
-  showPayStatusBox.addEventListener('change', () => { doSearch(); });
+  showPayStatusBox.addEventListener('change', () => { if (!searchBtn.disabled) doSearch(); });
   copyBtn.addEventListener('click', copyResults);
-
-  /* ========== Matching & Highlight Rules ==========
-     - 中文：至少两个连续汉字匹配；但若 D 列整格仅 1 个汉字，且输入中包含此汉字，也匹配
-     - 英文：至少一个完整英文单词匹配（不区分大小写）
-     - 特殊字符：若输入不含中文/英文，使用“原样子串包含”匹配（允许 *_-^_^ 等）
-     ============================================== */
-
-  function isSingleChineseChar(str){
-    return /^[\u4e00-\u9fff]$/.test(str);
-  }
-
-function extractTokensCNEN(input){
-  // Chinese sequences (build all substrings length >= 2)
-  const cnSeq = (input.match(/[\u4e00-\u9fff]+/g) || []);
-  const cnSubstrings = [];
-  for (const seq of cnSeq) {
-    if (seq.length >= 2) {
-      for (let L = 2; L <= seq.length; L++) {
-        for (let i = 0; i + L <= seq.length; i++) {
-          cnSubstrings.push(seq.slice(i, i+L));
-        }
-      }
-    }
-  }
-
-  // Pure alphabetic words
-  const enWords = (input.match(/[A-Za-z]+/g) || []).map(w => w.toLowerCase());
-
-  // Alphanumeric handles (letters+digits, no space), e.g. egg57 / 57egg / a1b2
-  const enAlnum = (input.match(/(?:[A-Za-z]+[0-9]+|[0-9]+[A-Za-z]+)[A-Za-z0-9]*/g) || [])
-                    .map(s => s.toLowerCase());
-
-  return { cnSubstrings, enWords, enAlnum };
-}
-
-function matchByRule(userInput, targetText){
-  if (!userInput || !targetText) return false;
-  const t = String(targetText);
-  const tl = t.toLowerCase();
-
-  // QUICK PATH: if input itself looks like an alphanumeric handle, do case-insensitive substring
-  const rawHandle = (userInput || "").trim();
-  if (/[A-Za-z]\d|\d[A-Za-z]/.test(rawHandle)) {
-    if (tl.indexOf(rawHandle.toLowerCase()) !== -1) return true;
-  }
-
-  // Single-Chinese-char special case
-  const trimmedTarget = t.trim();
-  if (/^[\u4e00-\u9fff]$/.test(trimmedTarget) && userInput.includes(trimmedTarget)) {
-    return true;
-  }
-
-  const { cnSubstrings, enWords, enAlnum } = extractTokensCNEN(userInput);
-
-  // Chinese: ≥2 consecutive chars
-  for (const sub of cnSubstrings) {
-    if (sub && t.includes(sub)) return true;
-  }
-
-  // English (pure letters): whole word (case-insensitive)
-  for (const w of enWords) {
-    if (!w) continue;
-    const re = new RegExp(`\\b${w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
-    if (re.test(tl)) return true;
-  }
-
-  // Alphanumeric handles: case-insensitive substring
-  for (const h of enAlnum) {
-    if (!h) continue;
-    if (tl.indexOf(h) !== -1) return true;
-  }
-
-  // Special chars fallback (no CN/EN/alnum) => raw substring
-  if (cnSubstrings.length === 0 && enWords.length === 0 && enAlnum.length === 0) {
-    const raw = userInput.trim();
-    if (raw && t.includes(raw)) return true;
-  }
-
-  return false;
-}
-
-function highlightMatches(userInput, targetText){
-  const text = String(targetText || '');
-  if (!userInput || !text) return escapeHTML(text);
-
-  const raw = (userInput || "").trim();
-  const ranges = [];
-
-  // QUICK PATH highlight for an alphanumeric handle like "egg57"
-  if (/[A-Za-z]\d|\d[A-Za-z]/.test(raw)) {
-    const lowerText = text.toLowerCase();
-    const needle = raw.toLowerCase();
-    let start = 0, idx;
-    while ((idx = lowerText.indexOf(needle, start)) !== -1) {
-      ranges.push([idx, idx + needle.length]);
-      start = idx + Math.max(1, needle.length);
-    }
-    if (ranges.length) {
-      // fall through to merge+render below
-    }
-  }
-
-  // Single Chinese char special case: highlight the whole char
-  const trimmedText = text.trim();
-  if (/^[\u4e00-\u9fff]$/.test(trimmedText) && raw.includes(trimmedText)) {
-    return '<mark>' + escapeHTML(text) + '</mark>';
-  }
-
-  const { cnSubstrings, enWords, enAlnum } = extractTokensCNEN(raw);
-
-  // Chinese ≥2 substrings
-  for (const sub of cnSubstrings) {
-    if (!sub) continue;
-    let idx = text.indexOf(sub);
-    while (idx !== -1) {
-      ranges.push([idx, idx + sub.length]);
-      idx = text.indexOf(sub, idx + 1);
-    }
-  }
-
-  // English whole words (case-insensitive)
-  for (const w of enWords) {
-    if (!w) continue;
-    const re = new RegExp(`\\b${w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'gi');
-    let m;
-    while ((m = re.exec(text)) !== null) {
-      ranges.push([m.index, m.index + m[0].length]);
-    }
-  }
-
-  // Alphanumeric handles: case-insensitive substring
-  for (const h of enAlnum) {
-    if (!h) continue;
-    const lowerText = text.toLowerCase();
-    let start = 0, idx;
-    while ((idx = lowerText.indexOf(h, start)) !== -1) {
-      ranges.push([idx, idx + h.length]);
-      start = idx + Math.max(1, h.length);
-    }
-  }
-
-  // Specials fallback: if no CN/EN/alnum tokens, raw substring
-  if (cnSubstrings.length === 0 && enWords.length === 0 && enAlnum.length === 0 && raw) {
-    let start = 0, idx;
-    while ((idx = text.indexOf(raw, start)) !== -1) {
-      ranges.push([idx, idx + raw.length]);
-      start = idx + Math.max(1, raw.length);
-    }
-  }
-
-  if (!ranges.length) return escapeHTML(text);
-
-  // Merge ranges
-  ranges.sort((a,b) => a[0]-b[0] || a[1]-b[1]);
-  const merged = [];
-  let cur = ranges[0];
-  for (let i=1; i<ranges.length; i++){
-    const r = ranges[i];
-    if (r[0] <= cur[1]) cur[1] = Math.max(cur[1], r[1]);
-    else { merged.push(cur); cur = r; }
-  }
-  merged.push(cur);
-
-  // Render
-  let out = '', last = 0;
-  for (const [s,e] of merged){
-    out += escapeHTML(text.slice(last, s));
-    out += '<mark>' + escapeHTML(text.slice(s, e)) + '</mark>';
-    last = e;
-  }
-  out += escapeHTML(text.slice(last));
-  return out;
-}
-
-
-  const { cnSubstrings, enWords, enAlnum } = extractTokensCNEN(userInput);
-  const ranges = [];
-
-  // 目标为单个汉字且输入包含 -> 整字高亮
-  const trimmedText = text.trim();
-  if (/^[\u4e00-\u9fff]$/.test(trimmedText) && raw.includes(trimmedText)) {
-    return '<mark>' + escapeHTML(text) + '</mark>';
-  }
-
-  // 中文 ≥2 连字：逐段高亮
-  for (const sub of cnSubstrings) {
-    if (!sub) continue;
-    let idx = text.indexOf(sub);
-    while (idx !== -1) {
-      ranges.push([idx, idx + sub.length]);
-      idx = text.indexOf(sub, idx + 1);
-    }
-  }
-
-  // 英文纯字母：整词（不区分大小写）
-  for (const w of enWords) {
-    if (!w) continue;
-    const re = new RegExp(`\\b${w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'gi');
-    let m;
-    while ((m = re.exec(text)) !== null) {
-      ranges.push([m.index, m.index + m[0].length]);
-    }
-  }
-
-  // NEW：英数混合句柄（egg57 等）：大小写不敏感“子串”高亮
-  for (const h of enAlnum) {
-    if (!h) continue;
-    const lowerText = text.toLowerCase();
-    let start = 0, idx;
-    while ((idx = lowerText.indexOf(h, start)) !== -1) {
-      ranges.push([idx, idx + h.length]);
-      start = idx + Math.max(1, h.length);
-    }
-  }
-
-  // 若既无中文子串也无英/英数 -> 特殊字符原样匹配高亮
-  if (cnSubstrings.length === 0 && enWords.length === 0 && enAlnum.length === 0 && raw) {
-    let start = 0, idx;
-    while ((idx = text.indexOf(raw, start)) !== -1) {
-      ranges.push([idx, idx + raw.length]);
-      start = idx + Math.max(1, raw.length);
-    }
-  }
-
-  if (!ranges.length) return escapeHTML(text);
-
-  // 合并区间
-  ranges.sort((a,b) => a[0]-b[0] || a[1]-b[1]);
-  const merged = [];
-  let cur = ranges[0];
-  for (let i=1; i<ranges.length; i++){
-    const r = ranges[i];
-    if (r[0] <= cur[1]) cur[1] = Math.max(cur[1], r[1]);
-    else { merged.push(cur); cur = r; }
-  }
-  merged.push(cur);
-
-  // 生成高亮 HTML
-  let out = '', last = 0;
-  for (const [s,e] of merged){
-    out += escapeHTML(text.slice(last, s));
-    out += '<mark>' + escapeHTML(text.slice(s, e)) + '</mark>';
-    last = e;
-  }
-  out += escapeHTML(text.slice(last));
-  return out;
-}
-
-    if (!ranges.length) return escapeHTML(text);
-
-    // 合并区间
-    ranges.sort((a,b) => a[0]-b[0] || a[1]-b[1]);
-    const merged = [];
-    let cur = ranges[0];
-    for (let i=1; i<ranges.length; i++){
-      const r = ranges[i];
-      if (r[0] <= cur[1]) cur[1] = Math.max(cur[1], r[1]);
-      else { merged.push(cur); cur = r; }
-    }
-    merged.push(cur);
-
-    // 输出 HTML
-    let out = '', last = 0;
-    for (const [s,e] of merged){
-      out += escapeHTML(text.slice(last, s));
-      out += '<mark>' + escapeHTML(text.slice(s, e)) + '</mark>';
-      last = e;
-    }
-    out += escapeHTML(text.slice(last));
-    return out;
-  }
 
   // Search
   function doSearch(){
@@ -542,7 +443,6 @@ function highlightMatches(userInput, targetText){
       setStatus(`没有找到 "${key}" 的记录。`, true);
       copyBtn.disabled = true;
 
-      // 显示你提供的趣味提示
       const empty = document.createElement('div');
       empty.className = 'empty-box multiline';
       empty.innerHTML = `哈哈这位客官，您可能是<b>“买了个寂寞”</b>😂
@@ -553,27 +453,9 @@ function highlightMatches(userInput, targetText){
 
 客官请随意，喜欢哪个尽管拍，小二随时为您打包～📦💨`;
       listDiv.appendChild(empty);
-          listDiv.appendChild(table);
-
-    // 👇 If 2+ results and all belong to the same user name, show the thank-you note
-    if (rows.length >= 2) {
-      const uniqueNames = new Set(rows.map(r => String(r.d || '').trim()));
-      if (uniqueNames.size === 1) {
-        const note = document.createElement('div');
-        note.className = 'empty-box multiline';
-        note.style.marginTop = '12px';
-        note.innerHTML = `亲爱的客官们，最近看到您囤货的热情，小二感动得眼泪都快掉进打包袋里了😭
-感谢您一路支持、信任与厚爱！
-您的每一次下单，都是对小二继续努力的最大鼓励❤️
-祝您日日有好物，件件都喜欢！`;
-        listDiv.appendChild(note);
-      }
-    }
-
-    copyBtn.disabled = false;
-
       return;
     }
+
     setStatus(`找到 ${rows.length} 条记录。`);
 
     const table = document.createElement('table');
@@ -605,7 +487,6 @@ function highlightMatches(userInput, targetText){
       tr2.className = 'detail-row';
       const td = document.createElement('td');
 
-      // 计算需要合并的列数
       const colSpan = showPayStatus ? 4 : 3;
       td.colSpan = colSpan;
 
@@ -625,6 +506,22 @@ function highlightMatches(userInput, targetText){
 
     table.appendChild(tb);
     listDiv.appendChild(table);
+
+    // If 2+ results and all belong to the same user name, show the thank-you note
+    if (rows.length >= 2) {
+      const uniqueNames = new Set(rows.map(r => String(r.d || '').trim()));
+      if (uniqueNames.size === 1) {
+        const note = document.createElement('div');
+        note.className = 'empty-box multiline';
+        note.style.marginTop = '12px';
+        note.innerHTML = `亲爱的客官们，最近看到您囤货的热情，小二感动得眼泪都快掉进打包袋里了😭
+感谢您一路支持、信任与厚爱！
+您的每一次下单，都是对小二继续努力的最大鼓励❤️
+祝您日日有好物，件件都喜欢！`;
+        listDiv.appendChild(note);
+      }
+    }
+
     copyBtn.disabled = false;
   }
 
@@ -635,7 +532,6 @@ function highlightMatches(userInput, targetText){
     if (showPayStatus) header.push('支付状态');
     header.push('客户姓名','接龙内容','应付金额（USD）');
 
-    // 从内部数据再生成，而不是从 DOM 抽取（避免丢失换行结构）
     const rows = [];
     const key = (nameInput.value || "").trim();
     const res = [];
@@ -686,6 +582,7 @@ function highlightMatches(userInput, targetText){
 </script>
 </body>
 </html>
+
 
 
 
