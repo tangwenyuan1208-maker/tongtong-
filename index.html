@@ -5,48 +5,97 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>一一团近期接龙到货情况</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
 <style>
+  /* === Kawaii Pink Theme === */
   .multiline { white-space: pre-line; }
-  :root { --bg:#f6f7fb; --card:#fff; --muted:#666; --accent:#165DFF; --ok:#19be6b; --danger:#fa5151; --hl:#fff2a8; }
-  body { margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Noto Sans SC",sans-serif; background:var(--bg); color:#222; }
+
+  :root {
+    --bg:#fff6fb;           /* very light pink */
+    --card:#ffffff;
+    --muted:#7a6d78;
+    --accent:#ff66a1;       /* primary pink */
+    --accent-2:#ff8bbb;     /* lighter pink */
+    --ok:#3cc88f;           /* mint ok */
+    --danger:#ff5d7a;       /* strawberry danger */
+    --hl:#ffe5f0;           /* blush highlight */
+    --line:#ffd6e6;
+    --shadow:0 10px 30px rgba(255,102,161,.12);
+  }
+
+  body {
+    margin:0;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Noto Sans SC",sans-serif;
+    color:#3a2c36;
+    background:
+      radial-gradient(1200px 600px at 10% -10%, #fff0f7 10%, transparent 60%),
+      radial-gradient(1200px 600px at 110% 10%, #ffeef6 10%, transparent 60%),
+      var(--bg);
+  }
+
   .container { max-width:980px; margin:32px auto; padding:0 16px; }
 
+  /* Banner */
   .banner { text-align:center; margin-bottom:16px; }
-  .banner img { max-width:100%; height:auto; border-radius:12px; box-shadow:0 4px 12px rgba(0,0,0,.08); object-fit:contain; }
+  .banner img { max-width:100%; height:auto; border-radius:18px; box-shadow:var(--shadow); object-fit:contain; }
 
-  .card { background:var(--card); border-radius:16px; box-shadow:0 6px 20px rgba(0,0,0,.06); padding:20px; margin:16px 0; }
-  h1 { font-size:24px; margin:0 0 8px; }
+  /* Cards */
+  .card { background:var(--card); border-radius:20px; box-shadow:var(--shadow); padding:22px; margin:18px 0; border:1px solid var(--line); }
+  h1 { font-size:26px; margin:0 0 8px; letter-spacing:.3px; }
+  h1::after { content:"  ♡"; color:var(--accent); font-weight:700; }
   .muted { color:var(--muted); font-size:14px; }
+
   .row { display:flex; flex-wrap:wrap; gap:12px; align-items:center; }
   label { font-weight:600; }
-  input[type="text"] { padding:10px 12px; border:1px solid #e6e6e6; border-radius:10px; background:#fafafa; min-width:220px; }
-  button { background:var(--accent); color:#fff; border:none; border-radius:10px; padding:10px 14px; cursor:pointer; }
-  button.secondary { background:#333; }
+
+  /* Inputs */
+  input[type="text"] {
+    padding:10px 14px; border:1px solid var(--line); border-radius:999px; background:#fff; min-width:240px;
+    transition: box-shadow .2s ease, border-color .2s ease;
+  }
+  input[type="text"]:focus { outline:none; border-color:var(--accent-2); box-shadow:0 0 0 4px rgba(255,136,187,.18); }
+
+  /* Buttons */
+  button {
+    background:linear-gradient(180deg, var(--accent-2), var(--accent));
+    color:#fff; border:none; border-radius:999px; padding:10px 16px; cursor:pointer;
+    box-shadow:0 6px 14px rgba(255,102,161,.2);
+    transition: transform .08s ease, box-shadow .2s ease, opacity .2s ease;
+  }
+  button:hover { transform: translateY(-1px); box-shadow:0 10px 18px rgba(255,102,161,.25); }
+  button.secondary { background:linear-gradient(180deg,#ffd9e8,#ffb7d5); color:#7a3a55; }
   button:disabled { opacity:.6; cursor:not-allowed; }
-  .badge { display:inline-block; padding:2px 8px; border-radius:999px; font-size:12px; background:#eee; }
 
-  /* Table (mobile-friendly, two-line per record) */
-  table { width:100%; border-collapse:collapse; margin-top:10px; table-layout:auto; }
-  th, td { text-align:left; padding:10px; border-bottom:1px solid #f0f0f0; vertical-align:top; }
-  th { background:#fafafa; }
-  td, th { word-break:break-word; overflow-wrap:break-word; }
-  .detail-row td { background:#fafafa; font-size:14px; line-height:1.5; }
-  .detail-meta { display:flex; gap:16px; flex-wrap:wrap; }
-  .detail-meta b { color:#333; }
+  /* Badge */
+  .badge { display:inline-block; padding:3px 10px; border-radius:999px; font-size:12px; background:#ffe0ef; color:#7a3a55; border:1px solid var(--line); }
 
-  /* highlight */
-  mark { background: var(--hl); padding:0 .15em; border-radius:.2em; }
+  /* Table */
+  table { width:100%; border-collapse:collapse; margin-top:10px; table-layout:auto; overflow:hidden; border-radius:14px; border:1px solid var(--line); }
+  th, td { text-align:left; padding:12px 12px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { background:linear-gradient(180deg,#fff5fa,#ffeaf3); color:#7a3a55; font-weight:700; }
+  .detail-row td { background:#fff9fc; font-size:14px; line-height:1.6; }
+  .detail-meta { display:flex; gap:18px; flex-wrap:wrap; }
+  .detail-meta b { color:#5c3c4b; }
 
+  /* Highlight */
+  mark { background:var(--hl); padding:0 .25em; border-radius:.35em; box-shadow:inset 0 -10px 0 rgba(255,214,230,.45); }
+
+  /* Status */
   .error { color:var(--danger); }
   .good { color:var(--ok); }
 
-  /* Empty result message */
-  .empty-box { background:#fff; border:1px dashed #ddd; border-radius:12px; padding:16px; color:#333; }
+  /* Notices */
+  .empty-box {
+    background:linear-gradient(135deg, rgba(255,240,247,.8) 0 10px, rgba(255,255,255,.8) 10px 20px) repeat;
+    background-size:20px 20px;
+    border:1px dashed #ffc1d7; border-radius:16px; padding:16px; color:#5c3c4b;
+  }
+  .empty-box::before { content:"🛍️✨ "; margin-right:6px; }
 
-  /* Mobile tweaks */
+  /* Mobile */
   @media (max-width: 600px) {
     body { font-size:15px; }
-    th, td { padding:8px; }
+    th, td { padding:10px; }
     .detail-row td { font-size:13px; }
   }
 </style>
@@ -98,6 +147,8 @@ bayareaselect 绿植🍃头像
       </div>
     </div>
     <div id="status" class="muted" style="margin-top:8px;">正在加载表格…</div>
+
+    <!-- The note (if any) will be inserted right before this list -->
     <div id="list" style="margin-top:8px;"></div>
   </div>
 
@@ -106,25 +157,15 @@ bayareaselect 绿植🍃头像
     <h2 style="font-size:18px; margin-bottom:10px;">截至10月28日的团购到货进度：</h2>
     <div style="white-space:pre-line; line-height:1.6;">
  1. rototobebe还有25%没到。
-
-2. miki预定团的鞋子衣服下单后三周左右到货的节奏，在陆续到货。   
-
-3. petit main还没有从日本发出，预计十一月中上旬到货，有部分是还未发售的款式，要十一月中下旬到货。  
-
-4. 香水团爱马仕香水到齐，jo malone dipytique byredo预计还要1-2周左右。  
-
-5. stample到齐60%，仍在继续到货。  
-
-6. 部分之前的skater被卡在海关两个月，团长已重新订货，十一月初到齐。
-
-7. 贝亲指甲刀到齐，其他的下两周到齐。  
-
-8. miki袜子到齐，福袋十二月中下旬到货。  
-
-9. gelato pique已陆续从日本寄出，预计下两周左右到齐。  
-
+ 2. miki预定团的鞋子衣服下单后三周左右到货的节奏，在陆续到货。
+ 3. petit main还没有从日本发出，预计十一月中上旬到货，有部分是还未发售的款式，要十一月中下旬到货。
+ 4. 香水团爱马仕香水到齐，jo malone dipytique byredo预计还要1-2周左右。
+ 5. stample到齐60%，仍在继续到货。
+ 6. 部分之前的skater被卡在海关两个月，团长已重新订货，十一月初到齐。
+ 7. 贝亲指甲刀到齐，其他的下两周到齐。
+ 8. miki袜子到齐，福袋十二月中下旬到货。
+ 9. gelato pique已陆续从日本寄出，预计下两周左右到齐。
 10. labubu供应商已发货，预计下两周内陆续到货。
-
     </div>
   </div>
 </div>
@@ -132,7 +173,6 @@ bayareaselect 绿植🍃头像
 <script>
 (function(){
   const excelPath = "./orders.xlsx";  // Excel file
-  const LOG_ENDPOINT = "https://script.google.com/macros/s/AKfycbyJxw1wJbYRZMGmy8vjZ41kTEmbpCZzk-e-DvyksbqFNPvhjiw8Mek_lpg8gRkodm7iug/exec"; // 可选：Google Apps Script 日志端点
 
   let workbook = null;
   const sheetDataMap = new Map();
@@ -146,7 +186,7 @@ bayareaselect 绿植🍃头像
   const countBadge = $('count');
   const updateTime = $('updateTime');
 
-  // Show JS errors in status
+  // JS error -> status
   window.addEventListener('error', (ev) => {
     try {
       const msg = (ev && ev.message) ? ev.message : String(ev);
@@ -157,12 +197,9 @@ bayareaselect 绿植🍃头像
 
   // Helpers
   function escapeHTML(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+  function isSingleChineseChar(str){ return /^[\u4e00-\u9fff]$/.test(str); }
 
-  function isSingleChineseChar(str){
-    return /^[\u4e00-\u9fff]$/.test(str);
-  }
-
-  // Extract tokens from input
+  // Extract tokens (CN 2+ substrings, EN words, alnum handles like egg57)
   function extractTokensCNEN(input){
     const cnSeq = (input.match(/[\u4e00-\u9fff]+/g) || []);
     const cnSubstrings = [];
@@ -186,44 +223,35 @@ bayareaselect 绿植🍃头像
     const t = String(targetText);
     const tl = t.toLowerCase();
 
-    // Quick path: alphanumeric handle (e.g., egg57)
+    // Quick: alphanumeric handle (egg57)
     const rawHandle = (userInput || "").trim();
     if (/[A-Za-z]\d|\d[A-Za-z]/.test(rawHandle)) {
       if (tl.indexOf(rawHandle.toLowerCase()) !== -1) return true;
     }
 
-    // Single Chinese char special case
-    const trimmedTarget = t.trim();
-    if (isSingleChineseChar(trimmedTarget) && userInput.includes(trimmedTarget)) {
-      return true;
-    }
+    // Single Chinese char
+    if (isSingleChineseChar(t.trim()) && userInput.includes(t.trim())) return true;
 
     const { cnSubstrings, enWords, enAlnum } = extractTokensCNEN(userInput);
 
-    // Chinese ≥2 substring
-    for (const sub of cnSubstrings) {
-      if (sub && t.includes(sub)) return true;
-    }
+    // CN 2+ substring
+    for (const sub of cnSubstrings) { if (sub && t.includes(sub)) return true; }
 
-    // English whole word (case-insensitive)
+    // EN whole word (case-insensitive)
     for (const w of enWords) {
       if (!w) continue;
       const re = new RegExp(`\\b${w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
       if (re.test(tl)) return true;
     }
 
-    // Alphanumeric handle (case-insensitive substring)
-    for (const h of enAlnum) {
-      if (!h) continue;
-      if (tl.indexOf(h) !== -1) return true;
-    }
+    // Alnum handle substring
+    for (const h of enAlnum) { if (!h) continue; if (tl.indexOf(h) !== -1) return true; }
 
-    // Special-char fallback
+    // Special-char raw fallback
     if (cnSubstrings.length === 0 && enWords.length === 0 && enAlnum.length === 0) {
       const raw = userInput.trim();
       if (raw && t.includes(raw)) return true;
     }
-
     return false;
   }
 
@@ -235,87 +263,70 @@ bayareaselect 绿植🍃头像
     const raw = (userInput || "").trim();
     const ranges = [];
 
-    // Quick path: alphanumeric handle highlight
+    // alnum quick
     if (/[A-Za-z]\d|\d[A-Za-z]/.test(raw)) {
-      const lowerText = text.toLowerCase();
-      const needle = raw.toLowerCase();
+      const low = text.toLowerCase(), needle = raw.toLowerCase();
       let start = 0, idx;
-      while ((idx = lowerText.indexOf(needle, start)) !== -1) {
-        ranges.push([idx, idx + needle.length]);
-        start = idx + Math.max(1, needle.length);
+      while ((idx = low.indexOf(needle, start)) !== -1) {
+        ranges.push([idx, idx + needle.length]); start = idx + Math.max(1, needle.length);
       }
     }
 
-    // Single Chinese char special case
-    const trimmedText = text.trim();
-    if (isSingleChineseChar(trimmedText) && raw.includes(trimmedText)) {
-      return '<mark>' + escapeHTML(text) + '</mark>';
-    }
+    // single CN char
+    if (isSingleChineseChar(text.trim()) && raw.includes(text.trim())) return '<mark>' + escapeHTML(text) + '</mark>';
 
     const { cnSubstrings, enWords, enAlnum } = extractTokensCNEN(raw);
 
-    // Chinese ≥2 substring
+    // CN 2+ substrings
     for (const sub of cnSubstrings) {
-      if (!sub) continue;
-      let idx = text.indexOf(sub);
-      while (idx !== -1) {
-        ranges.push([idx, idx + sub.length]);
-        idx = text.indexOf(sub, idx + 1);
-      }
+      if (!sub) continue; let i = text.indexOf(sub);
+      while (i !== -1) { ranges.push([i, i + sub.length]); i = text.indexOf(sub, i + 1); }
     }
 
-    // English whole word
+    // EN words
     for (const w of enWords) {
-      if (!w) continue;
-      const re = new RegExp(`\\b${w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'gi');
-      let m;
-      while ((m = re.exec(text)) !== null) {
-        ranges.push([m.index, m.index + m[0].length]);
-      }
+      if (!w) continue; const re = new RegExp(`\\b${w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'gi'); let m;
+      while ((m = re.exec(text)) !== null) { ranges.push([m.index, m.index + m[0].length]); }
     }
 
-    // Alphanumeric handles
+    // Alnum handles
     for (const h of enAlnum) {
-      if (!h) continue;
-      const lowerText = text.toLowerCase();
-      let start = 0, idx;
-      while ((idx = lowerText.indexOf(h, start)) !== -1) {
-        ranges.push([idx, idx + h.length]);
-        start = idx + Math.max(1, h.length);
-      }
+      if (!h) continue; const low = text.toLowerCase(); let i=0, idx;
+      while ((idx = low.indexOf(h, i)) !== -1) { ranges.push([idx, idx + h.length]); i = idx + Math.max(1, h.length); }
     }
 
-    // Special-char fallback
-    if (cnSubstrings.length === 0 && enWords.length === 0 && enAlnum.length === 0 && raw) {
-      let start = 0, idx;
-      while ((idx = text.indexOf(raw, start)) !== -1) {
-        ranges.push([idx, idx + raw.length]);
-        start = idx + Math.max(1, raw.length);
-      }
+    // Raw fallback
+    if (!cnSubstrings.length && !enWords.length && !enAlnum.length && raw) {
+      let i = 0, idx; while ((idx = text.indexOf(raw, i)) !== -1) { ranges.push([idx, idx + raw.length]); i = idx + Math.max(1, raw.length); }
     }
 
     if (!ranges.length) return escapeHTML(text);
 
-    // Merge ranges
-    ranges.sort((a,b) => a[0]-b[0] || a[1]-b[1]);
-    const merged = [];
-    let cur = ranges[0];
-    for (let i=1; i<ranges.length; i++){
-      const r = ranges[i];
-      if (r[0] <= cur[1]) cur[1] = Math.max(cur[1], r[1]);
-      else { merged.push(cur); cur = r; }
-    }
+    // merge
+    ranges.sort((a,b)=>a[0]-b[0]||a[1]-b[1]);
+    const merged=[]; let cur=ranges[0];
+    for (let k=1;k<ranges.length;k++){ const r=ranges[k]; if (r[0]<=cur[1]) cur[1]=Math.max(cur[1],r[1]); else { merged.push(cur); cur=r; } }
     merged.push(cur);
 
-    // Render
-    let out = '', last = 0;
-    for (const [s,e] of merged){
-      out += escapeHTML(text.slice(last, s));
-      out += '<mark>' + escapeHTML(text.slice(s, e)) + '</mark>';
-      last = e;
-    }
-    out += escapeHTML(text.slice(last));
+    // render
+    let out='', last=0;
+    for (const [s,e] of merged){ out+=escapeHTML(text.slice(last,s)); out+='<mark>'+escapeHTML(text.slice(s,e))+'</mark>'; last=e; }
+    out+=escapeHTML(text.slice(last));
     return out;
+  }
+
+  // Insert a pre-result notice BEFORE the results list
+  function insertPreResultNotice(html){
+    // remove old
+    const old = document.getElementById('preNote');
+    if (old) old.remove();
+    // insert new before listDiv
+    const note = document.createElement('div');
+    note.id = 'preNote';
+    note.className = 'empty-box multiline';
+    note.style.marginBottom = '10px';
+    note.innerHTML = html;
+    listDiv.parentNode.insertBefore(note, listDiv);
   }
 
   // Auto-load Excel
@@ -324,8 +335,7 @@ bayareaselect 绿植🍃头像
     try {
       const res = await fetch(excelPath, { cache: "no-store" });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const buf = await res.arrayBuffer();
-      const data = new Uint8Array(buf);
+      const data = new Uint8Array(await res.arrayBuffer());
       workbook = XLSX.read(data, { type: "array" });
       await afterWorkbookLoaded();
     } catch (e) {
@@ -337,12 +347,9 @@ bayareaselect 绿植🍃头像
   async function afterWorkbookLoaded(){
     const props = workbook.Props || {};
     const lastModified = props.ModifiedDate || props.LastSaved || props.DateModified || props.CreatedDate;
-    if (lastModified) {
-      const d = new Date(lastModified);
-      updateTime.textContent = "最后更新时间：" + (isNaN(d) ? String(lastModified) : d.toLocaleString("zh-CN", { timeZone:"America/Los_Angeles" }));
-    } else {
-      updateTime.textContent = "最后更新时间：未知";
-    }
+    updateTime.textContent = "最后更新时间：" + (lastModified
+      ? (isNaN(new Date(lastModified)) ? String(lastModified) : new Date(lastModified).toLocaleString("zh-CN", { timeZone:"America/Los_Angeles" }))
+      : "未知");
 
     const limit = Math.min(5, workbook.SheetNames.length);
     sheetDataMap.clear();
@@ -353,33 +360,13 @@ bayareaselect 绿植🍃头像
       sheetDataMap.set(sName, aoa);
     }
 
-    setStatus(`表格加载完成，可以开始查询。`, false);
+    setStatus(`表格加载完成，可以开始查询。`);
     searchBtn.disabled = false;
   }
 
-  // Search logger (optional)
-  async function logSearch(name, matches) {
-    if (!LOG_ENDPOINT) return;
-    try {
-      const payload = { name, matches, page: location.href, ua: navigator.userAgent };
-      await fetch(LOG_ENDPOINT, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        mode: 'no-cors',
-        body: JSON.stringify(payload)
-      });
-    } catch (e) {
-      console.warn('logSearch failed', e);
-    }
-  }
-
   // Events
-  nameInput.addEventListener('keydown', e => {
-    if (e.key === 'Enter' && !searchBtn.disabled) doSearch();
-  });
-  nameInput.addEventListener('input', () => {
-    searchBtn.disabled = !(nameInput.value || '').trim();
-  });
+  nameInput.addEventListener('keydown', e => { if (e.key === 'Enter' && !searchBtn.disabled) doSearch(); });
+  nameInput.addEventListener('input', () => { searchBtn.disabled = !(nameInput.value || '').trim(); });
   searchBtn.addEventListener('click', doSearch);
   showPayStatusBox.addEventListener('change', () => { if (!searchBtn.disabled) doSearch(); });
   copyBtn.addEventListener('click', copyResults);
@@ -400,25 +387,15 @@ bayareaselect 绿植🍃头像
         if (matchByRule(key, dVal)) {
           const aRaw = (row[0] ?? '');
           const aDisplay = String(aRaw).trim() === '' ? '暂未到货' : String(aRaw).trim();
-
           const bRaw = (row[1] ?? '');
           const bDisplay = String(bRaw).trim() === '' ? '未支付' : String(bRaw).trim();
-
           const e = row[4] ?? '';
           const f = formatUSD(row[5]);
-
-          results.push({
-            a: aDisplay,
-            b: bDisplay,
-            d: dVal,
-            dHTML: highlightMatches(key, dVal),
-            e, f
-          });
+          results.push({ a:aDisplay, b:bDisplay, d:dVal, dHTML:highlightMatches(key, dVal), e, f });
         }
       }
     }
 
-    logSearch(key, results.length);
     renderResults(results, key);
   }
 
@@ -433,27 +410,39 @@ bayareaselect 绿植🍃头像
     return new Intl.NumberFormat('en-US', { style:'currency', currency:'USD' }).format(num);
   }
 
-  // Render：主行（序号/到货/可选支付/姓名） + 详情行（接龙内容/金额，合并整行）
+  // Render
   function renderResults(rows, key){
     countBadge.textContent = rows.length;
     listDiv.innerHTML = '';
     const showPayStatus = showPayStatusBox.checked;
 
+    // Always clear previous pre-note
+    const existed = document.getElementById('preNote');
+    if (existed) existed.remove();
+
     if (!rows.length) {
       setStatus(`没有找到 "${key}" 的记录。`, true);
-      copyBtn.disabled = true;
-
-      const empty = document.createElement('div');
-      empty.className = 'empty-box multiline';
-      empty.innerHTML = `哈哈这位客官，您可能是<b>“买了个寂寞”</b>😂
+      insertPreResultNotice(
+`哈哈这位客官，您可能是<b>“买了个寂寞”</b>😂
 库存小二刚翻遍小本本，发现您最近没有下单哦～
 
 不急不急～客栈里好物多多，您可以先去现货区或其他接龙摊位逛逛，
 说不定下一眼缘分的宝贝就在等您呢✨
 
-客官请随意，喜欢哪个尽管拍，小二随时为您打包～📦💨`;
-      listDiv.appendChild(empty);
+客官请随意，喜欢哪个尽管拍，小二随时为您打包～📦💨`
+      );
+      copyBtn.disabled = true;
       return;
+    }
+
+    // ≥2 results → show the thank-you note BEFORE results (regardless of same name)
+    if (rows.length >= 2) {
+      insertPreResultNotice(
+`亲爱的客官们，最近看到您囤货的热情，小二感动得眼泪都快掉进打包袋里了😭
+感谢您一路支持、信任与厚爱！
+您的每一次下单，都是对小二继续努力的最大鼓励❤️
+祝您日日有好物，件件都喜欢！`
+      );
     }
 
     setStatus(`找到 ${rows.length} 条记录。`);
@@ -471,7 +460,7 @@ bayareaselect 绿植🍃头像
     const tb = document.createElement('tbody');
 
     rows.forEach((r, i) => {
-      // 主行
+      // main row
       const tr = document.createElement('tr');
       const cell = (txt) => { const td = document.createElement('td'); td.textContent = txt; tr.appendChild(td); };
       const cellHTML = (html) => { const td = document.createElement('td'); td.innerHTML = html; tr.appendChild(td); };
@@ -482,13 +471,11 @@ bayareaselect 绿植🍃头像
       cellHTML(r.dHTML);
       tb.appendChild(tr);
 
-      // 详情行（E, F）
+      // detail row（E, F）
       const tr2 = document.createElement('tr');
       tr2.className = 'detail-row';
       const td = document.createElement('td');
-
-      const colSpan = showPayStatus ? 4 : 3;
-      td.colSpan = colSpan;
+      td.colSpan = showPayStatus ? 4 : 3;
 
       const wrap = document.createElement('div');
       wrap.className = 'detail-meta';
@@ -506,33 +493,16 @@ bayareaselect 绿植🍃头像
 
     table.appendChild(tb);
     listDiv.appendChild(table);
-
-    // If 2+ results and all belong to the same user name, show the thank-you note
-    if (rows.length >= 2) {
-      const uniqueNames = new Set(rows.map(r => String(r.d || '').trim()));
-      if (uniqueNames.size === 1) {
-        const note = document.createElement('div');
-        note.className = 'empty-box multiline';
-        note.style.marginTop = '12px';
-        note.innerHTML = `亲爱的客官们，最近看到您囤货的热情，小二感动得眼泪都快掉进打包袋里了😭
-感谢您一路支持、信任与厚爱！
-您的每一次下单，都是对小二继续努力的最大鼓励❤️
-祝您日日有好物，件件都喜欢！`;
-        listDiv.appendChild(note);
-      }
-    }
-
     copyBtn.disabled = false;
   }
 
-  // 复制 TSV（包含 E、F 列）
+  // Copy TSV（包含 E、F 列）
   async function copyResults(){
     const showPayStatus = showPayStatusBox.checked;
     const header = ['序号','到货状态'];
     if (showPayStatus) header.push('支付状态');
     header.push('客户姓名','接龙内容','应付金额（USD）');
 
-    const rows = [];
     const key = (nameInput.value || "").trim();
     const res = [];
     for (const [_, aoa] of sheetDataMap) {
@@ -551,14 +521,14 @@ bayareaselect 绿植🍃头像
         }
       }
     }
-    res.forEach((r, i) => {
-      const row = [i+1, r.a];
-      if (showPayStatus) row.push(r.b);
-      row.push(r.d, r.e, r.f);
-      rows.push(row.join('\t'));
+    const lines = res.map((r, i) => {
+      const arr = [i+1, r.a];
+      if (showPayStatus) arr.push(r.b);
+      arr.push(r.d, r.e, r.f);
+      return arr.join('\t');
     });
 
-    const text = header.join('\t') + '\n' + rows.join('\n');
+    const text = header.join('\t') + '\n' + lines.join('\n');
     try {
       await navigator.clipboard.writeText(text);
       setStatus("结果已复制到剪贴板。", false, true);
@@ -582,6 +552,7 @@ bayareaselect 绿植🍃头像
 </script>
 </body>
 </html>
+
 
 
 
